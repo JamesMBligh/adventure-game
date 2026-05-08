@@ -53,6 +53,8 @@ export interface SceneObject {
 export interface Scene {
   id?: string;
   name?: string;
+  /** Hub scenes are operator-side rooms; dream scenes run inside a patient's mind. */
+  kind?: 'hub' | 'dream';
   /** Background image URL or CSS color. */
   background?: string;
   /** Description shown when entering (in addition to onEnter actions). */
@@ -62,6 +64,55 @@ export interface Scene {
   /** Actions run when the scene is left. */
   onExit?: Action[];
   objects?: SceneObject[];
+}
+
+export type PatientId = string;
+
+export interface PatientDef {
+  name: string;
+  /** Short summary shown in the case-files panel. */
+  presenting: string;
+  /** Longer file text (paragraphs separated by blank lines). */
+  file: string;
+  /** Scene id of the dream world the player enters from the device. */
+  dreamScene: string;
+  /** Sessions before the patient leaves the residence. Optional. */
+  maxSessions?: number;
+}
+
+export type PatientStatus =
+  | 'pending'
+  | 'inResidence'
+  | 'improving'
+  | 'healed'
+  | 'unhelped'
+  | 'departed';
+
+export interface PatientRuntimeState {
+  status: PatientStatus;
+  sessionsCompleted: number;
+  notes: string[];
+}
+
+export interface DialogChoice {
+  text: string;
+  /** Hide this choice unless the condition holds. */
+  visibleIf?: Condition;
+  actions?: Action[];
+  /** Advance to a node in the same dialog after running actions. */
+  next?: string;
+}
+
+export interface DialogNode {
+  text: string;
+  speaker?: string;
+  choices?: DialogChoice[];
+}
+
+export interface Dialog {
+  id: string;
+  start: string;
+  nodes: Record<string, DialogNode>;
 }
 
 export interface Adventure {
@@ -76,6 +127,10 @@ export interface Adventure {
   /** Item catalog: id -> display info. */
   items?: Record<string, { name: string; description?: string; image?: string }>;
   scenes: Record<string, Scene>;
+  /** Patients introduced by this adventure. */
+  patients?: Record<PatientId, PatientDef>;
+  /** Dialogs available for `startDialog` actions. */
+  dialogs?: Record<string, Dialog>;
 }
 
 /** Mutable runtime state. */
@@ -86,6 +141,12 @@ export interface GameState {
   /** Per-object overrides set at runtime (e.g. hidden, custom data). */
   objectState: Record<string, { hidden?: boolean; data?: Record<string, unknown> }>;
   narration: NarrationEntry[];
+  /** Patient ID currently undergoing a session, or null in the hub. */
+  activePatientId: PatientId | null;
+  /** Per-patient runtime state; populated lazily. */
+  patientState: Record<PatientId, PatientRuntimeState>;
+  /** Active dialog, or null if no dialog is in progress. */
+  dialogState: { dialogId: string; nodeId: string } | null;
 }
 
 export interface NarrationEntry {
