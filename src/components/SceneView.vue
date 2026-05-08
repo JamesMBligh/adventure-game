@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { GameEngine } from '../engine/engine';
 import { SCENE_HEIGHT, SCENE_WIDTH } from '../engine/layout';
+import { isUrlLike, resolveAssetUrl } from '../engine/assets';
 import type { SceneObject } from '../types';
 import SceneObjectView from './SceneObjectView.vue';
 
@@ -10,16 +11,14 @@ const props = defineProps<{
 }>();
 
 const scene = computed(() => props.engine.currentScene.value);
-const objects = computed(() => props.engine.visibleObjects());
+const objects = computed(() => props.engine.visibleObjects.value);
 
 const backgroundStyle = computed(() => {
   const bg = scene.value.background;
   if (!bg) return { background: '#1a1722' };
-  if (bg.startsWith('#') || bg.startsWith('rgb') || bg.startsWith('hsl')) {
-    return { background: bg };
-  }
+  if (!isUrlLike(bg)) return { background: bg };
   return {
-    backgroundImage: `url(${bg})`,
+    backgroundImage: `url(${resolveAssetUrl(bg)})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
   };

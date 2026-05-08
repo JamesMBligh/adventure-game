@@ -1,15 +1,23 @@
 import type { Condition } from '../types';
-import { conditionRegistry, type ActionContext } from './registry';
+import { conditionRegistry, conditionValidatorRegistry, type ActionContext } from './registry';
 
 /** Evaluate a condition by dispatching to the registry. Falsy/missing -> true. */
 export function evaluateCondition(condition: Condition | undefined, ctx: ActionContext): boolean {
   if (!condition) return true;
   const handler = conditionRegistry.get(condition.type);
   if (!handler) {
-    console.warn(`[adventure-engine] Unknown condition type: ${condition.type}`);
+    const where = describeContext(ctx);
+    console.warn(`[adventure-engine] Unknown condition type: ${condition.type}${where}`);
     return false;
   }
   return handler(condition, ctx);
+}
+
+function describeContext(ctx: ActionContext): string {
+  const parts: string[] = [];
+  if (ctx.object?.id) parts.push(`object="${ctx.object.id}"`);
+  if (ctx.trigger) parts.push(`trigger="${ctx.trigger}"`);
+  return parts.length ? ` (at ${parts.join(', ')})` : '';
 }
 
 export function registerBuiltInConditions(): void {
@@ -47,4 +55,63 @@ export function registerBuiltInConditions(): void {
   conditionRegistry.register('not', (cond, ctx) => {
     return !evaluateCondition(cond.condition as Condition, ctx);
   });
+
+  // { type: "patientStatus", patient: "whitfield", status: "improving" }
+  conditionRegistry.register('patientStatus', (cond, { engine }) => {
+    const id = cond.patient as string;
+    const expected = cond.status as string;
+    return engine.state.patientState[id]?.status === expected;
+  });
+
+  // { type: "patientHas", patient: "whitfield", note: "walked the corridor" }
+  conditionRegistry.register('patientHas', (cond, { engine }) => {
+    const id = cond.patient as string;
+    const note = cond.note as string;
+    return engine.state.patientState[id]?.notes.includes(note) ?? false;
+  });
+
+  // { type: "inDream" } -- true when current scene's kind is 'dream'.
+  conditionRegistry.register('inDream', (_cond, { engine }) => {
+    return engine.currentScene.value.kind === 'dream';
+  });
+
+  // { type: "activePatient", patient: "whitfield" }
+  conditionRegistry.register('activePatient', (cond, { engine }) => {
+    return engine.state.activePatientId === (cond.patient as string);
+  });
+
+  registerBuiltInConditionValidators();
+}
+
+function requireConditionString(cond: Condition, key: string): string[] {
+  return typeof cond[key] === 'string' && (cond[key] as string).length > 0
+    ? []
+    : [`"${cond.type}" requires string field "${key}"`];
+}
+
+function requireConditionArray(cond: Condition, key: string): string[] {
+  return Array.isArray(cond[key]) ? [] : [`"${cond.type}" requires array field "${key}"`];
+}
+
+function registerBuiltInConditionValidators(): void {
+  conditionValidatorRegistry.register('flag', (c) => requireConditionString(c, 'flag'));
+  conditionValidatorRegistry.register('hasItem', (c) => requireConditionString(c, 'item'));
+  conditionValidatorRegistry.register('scene', (c) => requireConditionString(c, 'scene'));
+  conditionValidatorRegistry.register('and', (c) => requireConditionArray(c, 'conditions'));
+  conditionValidatorRegistry.register('or', (c) => requireConditionArray(c, 'conditions'));
+  conditionValidatorRegistry.register('not', (c) =>
+    c.condition && typeof c.condition === 'object'
+      ? []
+      : [`"not" requires object field "condition"`],
+  );
+  conditionValidatorRegistry.register('patientStatus', (c) => [
+    ...requireConditionString(c, 'patient'),
+    ...requireConditionString(c, 'status'),
+  ]);
+  conditionValidatorRegistry.register('patientHas', (c) => [
+    ...requireConditionString(c, 'patient'),
+    ...requireConditionString(c, 'note'),
+  ]);
+  conditionValidatorRegistry.register('inDream', () => []);
+  conditionValidatorRegistry.register('activePatient', (c) => requireConditionString(c, 'patient'));
 }

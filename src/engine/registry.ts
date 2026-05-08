@@ -13,6 +13,8 @@ export interface ActionContext {
 
 export type ActionHandler = (action: Action, ctx: ActionContext) => void | Promise<void>;
 export type ConditionHandler = (condition: Condition, ctx: ActionContext) => boolean;
+export type ActionValidator = (action: Action) => string[];
+export type ConditionValidator = (condition: Condition) => string[];
 
 /** Registries are simple maps; consumers can add their own types. */
 export class Registry<T> {
@@ -37,5 +39,7 @@ export class Registry<T> {
 
 export const actionRegistry = new Registry<ActionHandler>();
 export const conditionRegistry = new Registry<ConditionHandler>();
+export const actionValidatorRegistry = new Registry<ActionValidator>();
+export const conditionValidatorRegistry = new Registry<ConditionValidator>();
 /** Renders for `SceneObject.type`. The default "hotspot" is provided by the engine. */
 export const objectComponentRegistry = new Registry<Component>();
