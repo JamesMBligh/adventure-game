@@ -1,4 +1,5 @@
-export { GameEngine, ensureBuiltInsRegistered } from './engine';
+export { GameEngine, ensureBuiltInsRegistered, SCHEMA_VERSION } from './engine';
+export type { EngineSnapshot } from './engine';
 export {
   actionRegistry,
   conditionRegistry,
@@ -20,3 +21,11 @@ export {
   type AdventureValidationError,
 } from './validate';
 export { isUrlLike, resolveAssetUrl } from './assets';
+export {
+  saveGame,
+  loadGame,
+  hasSave,
+  clearSave,
+  attachAutosave,
+  type SavedGame,
+} from './persistence';

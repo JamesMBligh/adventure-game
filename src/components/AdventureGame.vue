@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, shallowRef } from 'vue';
 import type { Adventure } from '../types';
-import { GameEngine, ensureBuiltInsRegistered } from '../engine/engine';
+import { GameEngine, ensureBuiltInsRegistered, attachAutosave, type SavedGame } from '../engine';
 import { SCENE_WIDTH } from '../engine/layout';
 import SceneView from './SceneView.vue';
 import NarrationPanel from './NarrationPanel.vue';
 import SidePanel from './SidePanel.vue';
-import GroundPanel from './GroundPanel.vue';
 
 const props = defineProps<{
   adventure: Adventure;
+  adventureId: string;
+  resumeFrom?: SavedGame | null;
 }>();
 
 defineEmits<{
@@ -19,33 +20,57 @@ defineEmits<{
 ensureBuiltInsRegistered();
 
 const engine = shallowRef<GameEngine>(new GameEngine(props.adventure));
+attachAutosave(engine.value, props.adventureId);
 
-onMounted(() => {
-  void engine.value.start();
+onMounted(async () => {
+  if (props.resumeFrom && engine.value.restore(props.resumeFrom.snapshot)) {
+    // Resume: state is restored; persist hook re-armed by attachAutosave already.
+    return;
+  }
+  await engine.value.start();
 });
 
-const sceneName = computed(() => engine.value.currentScene.value.name);
-// Match the ground/narration width to the scene so the layout aligns under it.
+const scene = computed(() => engine.value.currentScene.value);
+const isDream = computed(() => scene.value.kind === 'dream');
+const activePatient = computed(() => {
+  const id = engine.value.state.activePatientId;
+  if (!id) return null;
+  return props.adventure.patients?.[id] ?? null;
+});
+const sessionsCompleted = computed(() => {
+  const id = engine.value.state.activePatientId;
+  if (!id) return 0;
+  return engine.value.state.patientState[id]?.sessionsCompleted ?? 0;
+});
+
+const headerTitle = computed(() => {
+  if (isDream.value && activePatient.value) {
+    const lastName = activePatient.value.name.split(/\s+/).pop() ?? activePatient.value.name;
+    return `${lastName} — Session ${sessionsCompleted.value}`;
+  }
+  return scene.value.name ?? props.adventure.title;
+});
+
 const sceneColStyle = { width: `${SCENE_WIDTH}px` };
 </script>
 
 <template>
-  <div class="game">
+  <div class="game" :class="{ 'mode-dream': isDream }">
     <header class="game-header">
-      <button class="back" type="button" @click="$emit('exit')" aria-label="Back to menu">
+      <button class="back" type="button" aria-label="Back to menu" @click="$emit('exit')">
         ← Menu
       </button>
-      <h1>{{ adventure.title }}</h1>
-      <span v-if="adventure.author" class="author">by {{ adventure.author }}</span>
+      <h1>{{ headerTitle }}</h1>
+      <span v-if="!isDream && adventure.author" class="author">by {{ adventure.author }}</span>
+      <span v-else-if="isDream" class="mode-tag" aria-label="Inside a dream">in-dream</span>
     </header>
 
     <div class="stage">
       <div class="scene-column" :style="sceneColStyle">
         <SceneView :engine="engine" />
-        <GroundPanel :scene-name="sceneName" />
-        <NarrationPanel :entries="engine.state.narration" />
+        <NarrationPanel :engine="engine" />
       </div>
-      <SidePanel :inventory="engine.state.inventory" />
+      <SidePanel :engine="engine" :hide-case-files="isDream" />
     </div>
   </div>
 </template>
@@ -84,6 +109,15 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
   font-size: 0.9rem;
 }
 
+.mode-tag {
+  color: #b6a8d6;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border: 1px solid #6a5d8a;
+  padding: 0.05rem 0.4rem;
+}
+
 .stage {
   display: flex;
   align-items: stretch;
@@ -98,6 +132,14 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
 }
 
 .scene-column > :deep(.narration) {
-  height: 220px;
+  height: 280px;
+}
+
+.mode-dream :deep(.narration .line.kind-narration) {
+  color: #d6c9f0;
+}
+
+.mode-dream :deep(.scene) {
+  box-shadow: inset 0 0 80px rgba(110, 90, 160, 0.25);
 }
 </style>

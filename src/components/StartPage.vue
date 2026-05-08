@@ -1,17 +1,38 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { adventureCatalog, type AdventureCatalogEntry } from '../adventures';
+import { ref, computed } from 'vue';
+import { mainAdventure, adventureCatalog, type AdventureCatalogEntry } from '../adventures';
 import type { Adventure } from '../types';
-import { ensureBuiltInsRegistered, validateAdventure, formatValidationErrors } from '../engine';
+import {
+  ensureBuiltInsRegistered,
+  validateAdventure,
+  formatValidationErrors,
+  loadGame,
+  clearSave,
+  type SavedGame,
+} from '../engine';
 
 const emit = defineEmits<{
-  (e: 'start', adventure: Adventure, entry: AdventureCatalogEntry): void;
+  (e: 'start', adventure: Adventure, entry: AdventureCatalogEntry, resumeFrom?: SavedGame): void;
 }>();
 
 const loadingId = ref<string | null>(null);
 const error = ref<string | null>(null);
+const showAbout = ref(false);
 
-async function play(entry: AdventureCatalogEntry) {
+const existingSave = ref<SavedGame | null>(loadGame());
+const canContinue = computed(() => existingSave.value?.adventureId === mainAdventure.id);
+const savedWhen = computed(() => {
+  if (!existingSave.value) return '';
+  try {
+    return new Date(existingSave.value.savedAt).toLocaleString();
+  } catch {
+    return existingSave.value.savedAt;
+  }
+});
+
+const devEntries = computed(() => adventureCatalog.filter((e) => e.devOnly));
+
+async function load(entry: AdventureCatalogEntry, resumeFrom?: SavedGame) {
   if (loadingId.value) return;
   loadingId.value = entry.id;
   error.value = null;
@@ -26,7 +47,7 @@ async function play(entry: AdventureCatalogEntry) {
       error.value = `"${entry.title}" has ${issues.length} validation issue${issues.length === 1 ? '' : 's'}. See console for details.`;
       return;
     }
-    emit('start', adventure, entry);
+    emit('start', adventure, entry, resumeFrom);
   } catch (err) {
     console.error(err);
     error.value = `Failed to load "${entry.title}".`;
@@ -34,40 +55,100 @@ async function play(entry: AdventureCatalogEntry) {
     loadingId.value = null;
   }
 }
+
+function newGame() {
+  if (canContinue.value) {
+    const ok = window.confirm(
+      'A saved game exists. Starting a new game will overwrite it. Continue?',
+    );
+    if (!ok) return;
+    clearSave();
+    existingSave.value = null;
+  }
+  void load(mainAdventure);
+}
+
+function continueGame() {
+  if (!existingSave.value) return;
+  void load(mainAdventure, existingSave.value);
+}
 </script>
 
 <template>
   <main class="start">
     <header class="hero">
-      <h1>Adventure Engine</h1>
-      <p class="tagline">A small runtime for point-and-click adventures.</p>
+      <h1>{{ mainAdventure.title }}</h1>
+      <p class="tagline">{{ mainAdventure.description }}</p>
     </header>
 
-    <section class="catalog" aria-label="Available adventures">
-      <h2>Choose an adventure</h2>
-      <p v-if="adventureCatalog.length === 0" class="empty">
-        No adventures registered. Add one to <code>src/adventures/index.ts</code>.
+    <section class="actions" aria-label="Start">
+      <button
+        type="button"
+        class="primary"
+        :disabled="loadingId !== null"
+        @click="continueGame"
+        v-if="canContinue"
+      >
+        {{ loadingId === mainAdventure.id ? 'Loading…' : 'Continue' }}
+      </button>
+      <button
+        type="button"
+        :class="{ primary: !canContinue }"
+        :disabled="loadingId !== null"
+        @click="newGame"
+      >
+        {{ loadingId === mainAdventure.id ? 'Loading…' : 'New Game' }}
+      </button>
+      <button
+        type="button"
+        class="ghost"
+        :disabled="loadingId !== null"
+        @click="showAbout = !showAbout"
+      >
+        About
+      </button>
+      <p v-if="canContinue" class="save-meta">Last saved {{ savedWhen }}</p>
+    </section>
+
+    <section v-if="showAbout" class="about" aria-label="About">
+      <h2>About</h2>
+      <p>
+        A point-and-click adventure about an apprentice walking into other people's dreams. The
+        protagonist, Ashley, is referred to with they/them pronouns throughout; descriptive detail
+        is kept ambiguous so anyone can map themselves onto Ashley.
       </p>
-      <ul v-else class="cards">
-        <li v-for="entry in adventureCatalog" :key="entry.id" class="card">
-          <h3>{{ entry.title }}</h3>
-          <p v-if="entry.author" class="author">by {{ entry.author }}</p>
-          <p class="description">{{ entry.description }}</p>
-          <button type="button" :disabled="loadingId !== null" @click="play(entry)">
-            {{ loadingId === entry.id ? 'Loading…' : 'Play' }}
+      <p>
+        <strong>Content note.</strong> The game deals with grief, trauma, deception, and
+        institutional harm. It is not graphic, but it is not light. If you are looking for cosy,
+        this is not it.
+      </p>
+      <p>
+        Saves live in this browser's <code>localStorage</code>. There is no account, no server, and
+        nothing leaves the page.
+      </p>
+    </section>
+
+    <section v-if="devEntries.length > 0" class="dev" aria-label="Developer tools">
+      <h3>Dev fixtures</h3>
+      <ul>
+        <li v-for="entry in devEntries" :key="entry.id">
+          <button type="button" class="ghost" :disabled="loadingId !== null" @click="load(entry)">
+            {{ entry.title }}
           </button>
+          <span class="dev-desc">{{ entry.description }}</span>
         </li>
       </ul>
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
     </section>
+
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
   </main>
 </template>
 
 <style scoped>
 .start {
-  max-width: 900px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 3rem 1.5rem;
+  padding: 4rem 1.5rem;
 }
 
 .hero {
@@ -77,72 +158,109 @@ async function play(entry: AdventureCatalogEntry) {
 
 .hero h1 {
   margin: 0;
-  font-size: 2.4rem;
+  font-size: 2.6rem;
   letter-spacing: 0.04em;
   color: var(--hot);
 }
 
 .tagline {
   color: var(--ink-dim);
-  margin-top: 0.5rem;
+  margin: 0.75rem auto 0;
+  max-width: 38rem;
+  line-height: 1.5;
 }
 
-.catalog h2 {
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.actions button {
+  min-width: 9rem;
+}
+
+.actions button.primary {
+  background: var(--hot);
+  color: #1a1722;
+  border: none;
+}
+
+.actions button.ghost {
+  background: transparent;
+}
+
+.save-meta {
+  flex-basis: 100%;
+  text-align: center;
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
+
+.about {
+  margin-top: 2.5rem;
+  padding: 1.25rem 1.4rem;
+  background: var(--panel);
+  border: 1px solid var(--accent-dim);
+  line-height: 1.55;
+}
+
+.about h2 {
+  margin: 0 0 0.6rem 0;
   font-size: 1rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-dim);
-  margin-bottom: 1rem;
 }
 
-.cards {
+.about p {
+  margin: 0 0 0.7rem;
+}
+
+.about p:last-child {
+  margin-bottom: 0;
+}
+
+.dev {
+  margin-top: 2.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px dashed var(--accent-dim);
+}
+
+.dev h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.dev ul {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1rem;
-}
-
-.card {
-  background: var(--panel);
-  border: 1px solid var(--accent-dim);
-  padding: 1rem 1.1rem 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
-.card h3 {
-  margin: 0;
-  color: var(--hot);
-  font-size: 1.15rem;
+.dev li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
-.card .author {
-  margin: 0;
+.dev-desc {
+  color: var(--ink-dim);
   font-size: 0.85rem;
-  color: var(--ink-dim);
-}
-
-.card .description {
-  margin: 0 0 0.5rem 0;
-  color: var(--ink);
-  flex: 1 1 auto;
-  line-height: 1.45;
-}
-
-.card button {
-  align-self: flex-start;
-}
-
-.empty {
-  color: var(--ink-dim);
-  font-style: italic;
 }
 
 .error {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
+  text-align: center;
   color: #f08080;
 }
 </style>

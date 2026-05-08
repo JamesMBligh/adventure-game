@@ -1,22 +1,27 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
-import type { NarrationEntry } from '../types';
+import { computed, nextTick, ref, watch } from 'vue';
+import type { GameEngine } from '../engine';
 
 const props = defineProps<{
-  entries: NarrationEntry[];
+  engine: GameEngine;
 }>();
+
+const entries = computed(() => props.engine.state.narration);
+const choices = computed(() => props.engine.availableChoices.value);
+const inDialog = computed(() => props.engine.state.dialogState !== null);
 
 const scroller = ref<HTMLElement | null>(null);
 
-watch(
-  () => props.entries.length,
-  async () => {
-    await nextTick();
-    if (scroller.value) {
-      scroller.value.scrollTop = scroller.value.scrollHeight;
-    }
-  },
-);
+watch([() => entries.value.length, () => choices.value.length], async () => {
+  await nextTick();
+  if (scroller.value) {
+    scroller.value.scrollTop = scroller.value.scrollHeight;
+  }
+});
+
+function pick(index: number) {
+  void props.engine.chooseDialogOption(index);
+}
 </script>
 
 <template>
@@ -27,7 +32,13 @@ watch(
         <span v-if="entry.speaker" class="speaker">{{ entry.speaker }}:</span>
         <span class="text">{{ entry.text }}</span>
       </p>
-      <p v-if="entries.length === 0" class="empty">…</p>
+      <p v-if="entries.length === 0 && !inDialog" class="empty">…</p>
+
+      <ul v-if="inDialog && choices.length > 0" class="choices" aria-label="Dialog choices">
+        <li v-for="(c, i) in choices" :key="i">
+          <button type="button" @click="pick(i)">{{ c.text }}</button>
+        </li>
+      </ul>
     </div>
   </section>
 </template>
@@ -81,5 +92,30 @@ watch(
 .empty {
   color: var(--ink-dim);
   font-style: italic;
+}
+
+.choices {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.choices button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.choices button:hover {
+  border-color: var(--hot);
+  color: var(--hot);
 }
 </style>

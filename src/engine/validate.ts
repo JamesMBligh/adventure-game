@@ -41,6 +41,44 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
     }
   }
 
+  for (const [dialogId, dialog] of Object.entries(adventure.dialogs ?? {})) {
+    if (!dialog.nodes[dialog.start]) {
+      errors.push({
+        path: `dialogs.${dialogId}.start`,
+        message: `start node "${dialog.start}" is not defined`,
+      });
+    }
+    for (const [nodeId, node] of Object.entries(dialog.nodes)) {
+      const nodePath = `dialogs.${dialogId}.nodes.${nodeId}`;
+      if (typeof node.text !== 'string' || !node.text) {
+        errors.push({ path: `${nodePath}.text`, message: 'node text must be a non-empty string' });
+      }
+      (node.choices ?? []).forEach((choice, i) => {
+        const cPath = `${nodePath}.choices[${i}]`;
+        if (typeof choice.text !== 'string' || !choice.text) {
+          errors.push({ path: `${cPath}.text`, message: 'choice text must be a non-empty string' });
+        }
+        if (choice.visibleIf) walkCondition(choice.visibleIf, `${cPath}.visibleIf`, errors);
+        if (choice.actions) walkActions(choice.actions, `${cPath}.actions`, errors);
+        if (choice.next && !dialog.nodes[choice.next]) {
+          errors.push({
+            path: `${cPath}.next`,
+            message: `next node "${choice.next}" is not defined`,
+          });
+        }
+      });
+    }
+  }
+
+  for (const [patientId, patient] of Object.entries(adventure.patients ?? {})) {
+    if (!adventure.scenes[patient.dreamScene]) {
+      errors.push({
+        path: `patients.${patientId}.dreamScene`,
+        message: `dreamScene "${patient.dreamScene}" is not defined in scenes`,
+      });
+    }
+  }
+
   return errors;
 }
 
@@ -77,6 +115,8 @@ function walkAction(action: Action, path: string, errors: AdventureValidationErr
     if (Array.isArray(action.else)) walkActions(action.else as Action[], `${path}.else`, errors);
   } else if (action.type === 'sequence' && Array.isArray(action.actions)) {
     walkActions(action.actions as Action[], `${path}.actions`, errors);
+  } else if (action.type === 'speakExitPhrase' && Array.isArray(action.onWrong)) {
+    walkActions(action.onWrong as Action[], `${path}.onWrong`, errors);
   }
 }
 

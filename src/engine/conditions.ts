@@ -56,6 +56,30 @@ export function registerBuiltInConditions(): void {
     return !evaluateCondition(cond.condition as Condition, ctx);
   });
 
+  // { type: "patientStatus", patient: "whitfield", status: "improving" }
+  conditionRegistry.register('patientStatus', (cond, { engine }) => {
+    const id = cond.patient as string;
+    const expected = cond.status as string;
+    return engine.state.patientState[id]?.status === expected;
+  });
+
+  // { type: "patientHas", patient: "whitfield", note: "walked the corridor" }
+  conditionRegistry.register('patientHas', (cond, { engine }) => {
+    const id = cond.patient as string;
+    const note = cond.note as string;
+    return engine.state.patientState[id]?.notes.includes(note) ?? false;
+  });
+
+  // { type: "inDream" } -- true when current scene's kind is 'dream'.
+  conditionRegistry.register('inDream', (_cond, { engine }) => {
+    return engine.currentScene.value.kind === 'dream';
+  });
+
+  // { type: "activePatient", patient: "whitfield" }
+  conditionRegistry.register('activePatient', (cond, { engine }) => {
+    return engine.state.activePatientId === (cond.patient as string);
+  });
+
   registerBuiltInConditionValidators();
 }
 
@@ -80,4 +104,14 @@ function registerBuiltInConditionValidators(): void {
       ? []
       : [`"not" requires object field "condition"`],
   );
+  conditionValidatorRegistry.register('patientStatus', (c) => [
+    ...requireConditionString(c, 'patient'),
+    ...requireConditionString(c, 'status'),
+  ]);
+  conditionValidatorRegistry.register('patientHas', (c) => [
+    ...requireConditionString(c, 'patient'),
+    ...requireConditionString(c, 'note'),
+  ]);
+  conditionValidatorRegistry.register('inDream', () => []);
+  conditionValidatorRegistry.register('activePatient', (c) => requireConditionString(c, 'patient'));
 }
