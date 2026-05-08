@@ -4,52 +4,57 @@ Guidance for Claude Code sessions working on this repository.
 
 ## What this is
 
-A Vue 3 + Vite + TypeScript runtime for **point-and-click adventure games defined entirely by JSON**. The engine is intentionally generic: scene-object types, action types, and condition types are all dispatched through registries so new behaviour can be plugged in without touching the runtime. The repo also ships a sample adventure (`The Cabin in the Clearing`) and a GitHub Pages deploy workflow.
+A Vue 3 + Vite + TypeScript runtime for **point-and-click adventure games defined entirely by JSON**. The engine is intentionally generic: scene-object types, action types, and condition types are all dispatched through registries so new behaviour can be plugged in without touching the runtime.
 
-The original prototype lived in a multi-project scratch repo and was extracted into this standalone repository. There may be earlier conversation history that no longer travels with the code; this file is the durable summary.
+The repo ships **one player-facing game** — *The Wren House* (`src/adventures/main.json`), a vertical slice of an in-progress story about an apprentice who walks into other people's dreams. The engine also retains `cabin.json` as a dev-only regression fixture.
+
+The story design lives in a separate repo: `https://github.com/JamesMBligh/adventure-story`. Background, characters, the device, the dreamworld rules, the patient roster, and the season arc all live there. Treat that repo as authoritative when authoring or extending content.
 
 ## Stack & commands
 
 - **Vue 3** (script-setup, `<script setup lang="ts">`), **Vite 5**, **TypeScript** (strict).
 - `npm run dev` — local dev server (default port 5173).
-- `npm run build` — `vue-tsc --noEmit && vite build`. Always run this after non-trivial changes; it is the closest thing to a test suite right now.
+- `npm run build` — `vue-tsc --noEmit && vite build`. Run after non-trivial changes.
 - `npm run typecheck` — `vue-tsc --noEmit` only.
-- No test framework yet. If you add one, prefer Vitest.
+- `npm test` — Vitest, engine-layer tests under `src/engine/*.test.ts`.
+- `npm run lint` — ESLint (flat config).
+- `npm run format` / `npm run format:check` — Prettier.
 
 ## Architecture
 
 ### Engine (`src/engine/`)
 
-- `types.ts` (in `src/`) — domain types: `Adventure`, `Scene`, `SceneObject`, `Action`, `Condition`, `GameState`, `NarrationEntry`. `Action` and `Condition` are intentionally open-ended: `{ type: string, ...rest }`.
-- `registry.ts` — three registries: `actionRegistry`, `conditionRegistry`, `objectComponentRegistry`. Each is an instance of a tiny `Registry<T>` class. `ActionContext` is what handlers receive (`{ engine, object?, trigger? }`).
-- `actions.ts` — built-in action handlers (`narrate`, `goto`, `setFlag`, `addItem`, `removeItem`, `hideObject`, `showObject`, `if`, `sequence`, `wait`). `runActions(actions, ctx)` is the entry point.
-- `conditions.ts` — built-in conditions (`flag`, `hasItem`, `scene`, `and`, `or`, `not`). `evaluateCondition(cond, ctx)` returns boolean.
-- `engine.ts` — `GameEngine` class. Holds the reactive `GameState`, exposes `currentScene` (computed), `visibleObjects()`, `pushNarration()`, `enterScene(id)`, `fireTrigger(object, triggerName)`, `start()`. `ensureBuiltInsRegistered()` wires built-ins idempotently.
+- `../types.ts` — domain types: `Adventure`, `Scene`, `SceneObject`, `Action`, `Condition`, `GameState`, `NarrationEntry`, `Dialog`, `DialogNode`, `DialogChoice`, `PatientDef`, `PatientRuntimeState`, `PatientStatus`. `Action` and `Condition` are intentionally open-ended: `{ type: string, ...rest }`.
+- `registry.ts` — five registries: `actionRegistry`, `conditionRegistry`, `actionValidatorRegistry`, `conditionValidatorRegistry`, `objectComponentRegistry`. `ActionContext` is what handlers receive (`{ engine, object?, trigger? }`).
+- `actions.ts` — built-in actions: `narrate`, `goto`, `setFlag`, `addItem`, `removeItem`, `hideObject`, `showObject`, `if`, `sequence`, `wait`, `startDialog`, `endDialog`, `setPatientStatus`, `recordPatientNote`, `enterDream`, `wake`, `speakExitPhrase`. `runActions(actions, ctx)` is the entry point.
+- `conditions.ts` — built-in conditions: `flag`, `hasItem`, `scene`, `and`, `or`, `not`, `patientStatus`, `patientHas`, `inDream`, `activePatient`. `evaluateCondition(cond, ctx)` returns boolean.
+- `engine.ts` — `GameEngine` class. Holds the reactive `GameState`, exposes `currentScene`, `visibleObjects`, `activeDialog`, `activeDialogNode`, `availableChoices` (all `ComputedRef`s), `pushNarration()`, `enterScene(id)`, `fireTrigger(obj, name)`, `chooseDialogOption(i)`, `start()`, `serialize()`, `restore(snapshot)`. `ensureBuiltInsRegistered()` wires built-ins idempotently.
+- `assets.ts` — `isUrlLike` / `resolveAssetUrl` for adventure asset paths under GitHub Pages base.
+- `validate.ts` — `validateAdventure(adv)` walks an adventure and returns errors for unknown action/condition types, missing required fields, undefined dialog nodes, missing dream scenes, etc. Run at load-time before constructing the engine.
+- `persistence.ts` — `saveGame` / `loadGame` / `hasSave` / `clearSave` / `attachAutosave`. Single autosave key (`adventure-engine.save`). Autosave is wired in via `engine.onPersist`, which is fired after `enterScene`, `fireTrigger`, `chooseDialogOption`, and `start`.
 - `layout.ts` — `SCENE_WIDTH = 960`, `SCENE_HEIGHT = 540`. Object rects in adventure JSON are percentages of these, so changing them rescales everything cleanly.
 - `index.ts` — public re-exports. Treat this as the engine's surface API.
 
 ### Components (`src/components/`)
 
-- `AdventureGame.vue` — the host component. Takes an `Adventure` prop, owns a `GameEngine`, emits `exit`. The layout is a flex stage:
-  - left **scene column** (fixed `SCENE_WIDTH`): `SceneView` → `GroundPanel` → `NarrationPanel`,
-  - right **side column**: `SidePanel`.
+- `AdventureGame.vue` — host component. Takes `adventure`, `adventureId`, optional `resumeFrom` snapshot. Owns the `GameEngine`. Wires autosave, restores on resume. Renders different chrome in hub vs dream scenes (header text, narration tint).
 - `SceneView.vue` — fixed-size scene canvas. Renders background and absolutely-positioned `SceneObjectView`s.
-- `SceneObjectView.vue` — generic clickable region. Looks up its inner renderer in `objectComponentRegistry` keyed by `object.type` (default `hotspot`). Emits `click` / `hover`, which `SceneView` forwards to `engine.fireTrigger(obj, 'onClick' | 'onHover')`.
+- `SceneObjectView.vue` — generic clickable region. Looks up its inner renderer in `objectComponentRegistry` keyed by `object.type` (default `hotspot`).
 - `HotspotObject.vue` — default object renderer (transparent box, optional image, optional colour overlay).
-- `NarrationPanel.vue` — scrollable log; auto-scrolls on new entries; supports `narration` / `dialog` (with `speaker`) / `system` kinds.
-- `SidePanel.vue` — **placeholder** for the persistent player inventory. To be designed.
-- `GroundPanel.vue` — **placeholder** for items lying on the ground in the current scene. To be designed; will likely need engine support for per-scene ground inventories.
-- `StartPage.vue` — lists `adventureCatalog` entries; emits `start(adventure, entry)`.
+- `NarrationPanel.vue` — scrollable log; auto-scrolls on new entries. When a dialog is active, renders the active node's choices as buttons after the latest narration line.
+- `SidePanel.vue` — tabbed panel: **Inventory** (player items) and **Case Files** (patients with status `inResidence | improving | healed`). The Case Files tab is hidden inside dreams (`hideCaseFiles` prop).
+- `StartPage.vue` — single-game title screen. New Game / Continue / About. Lists dev fixtures only when `import.meta.env.DEV` is true.
 
 ### App shell
 
-- `src/App.vue` — switches between `StartPage` and `AdventureGame`. A `sessionKey` ref is bumped each launch so re-entering the same adventure remounts with fresh state.
+- `src/App.vue` — switches between `StartPage` and `AdventureGame`. A `sessionKey` ref is bumped each launch so re-entering remounts with fresh state. Forwards an optional `SavedGame` snapshot for Continue.
 - `src/main.ts` — mounts `App` and imports global `style.css`.
 
 ### Adventures
 
-- `src/adventures/index.ts` — `adventureCatalog: AdventureCatalogEntry[]`. Each entry has `{ id, title, description, author?, load }` where `load: () => Promise<Adventure>` is a dynamic import so adventure JSON is code-split.
-- `src/adventures/cabin.json` — sample adventure exercising locked doors, hidden-key pickup, conditional reveal of a trapdoor after reading a note, lantern-gated cellar descent, dialog narration. **Use it as a reference when authoring new adventures or testing engine changes.**
+- `src/adventures/index.ts` — `mainAdventure` is the single canonical game. `adventureCatalog` includes it plus dev-only fixtures (gated behind `import.meta.env.DEV`).
+- `src/adventures/main.json` — *The Wren House*, a Whitfield-tutorial vertical slice. Hub scenes: study (the offer), landing (with the closed parents' suite door), Ashley's room, treatment room. Dream scenes: concert hall stage / wings / corridor. Witness, not exorcism. Exit phrase: *the light in the conservatory*.
+- `src/adventures/cabin.json` — engine regression bed (hidden keys, conditional reveals, dialog narration). Dev-only.
 
 ## Adventure JSON shape (essentials)
 
@@ -60,10 +65,36 @@ The original prototype lived in a multi-project scratch repo and was extracted i
   "startScene": "sceneId",
   "initialState": { "flags": {}, "inventory": [] },
   "items": { "key": { "name": "Brass Key", "description": "..." } },
+  "patients": {
+    "whitfield": {
+      "name": "Catherine Whitfield",
+      "presenting": "short summary",
+      "file": "longer file text",
+      "dreamScene": "dreamSceneId",
+      "maxSessions": 6
+    }
+  },
+  "dialogs": {
+    "dialogId": {
+      "id": "dialogId",
+      "start": "nodeId",
+      "nodes": {
+        "nodeId": {
+          "speaker": "Wren",
+          "text": "...",
+          "choices": [
+            { "text": "Reply", "actions": [/* actions */], "next": "anotherNode" },
+            { "text": "Hidden until X", "visibleIf": { "type": "flag", "flag": "x" } }
+          ]
+        }
+      }
+    }
+  },
   "scenes": {
     "sceneId": {
       "name": "Display Name",
-      "background": "#hex | rgb(...) | /url-or-path.jpg",
+      "kind": "hub" | "dream",
+      "background": "#hex | rgb(...) | linear-gradient(...) | /url.jpg",
       "description": "Auto-narrated on enter (optional).",
       "onEnter": [/* actions */],
       "onExit":  [/* actions */],
@@ -71,10 +102,10 @@ The original prototype lived in a multi-project scratch repo and was extracted i
         {
           "id": "uniqueId",
           "name": "Display name",
-          "type": "hotspot",          // or any registered type
-          "rect": { "x": 0, "y": 0, "w": 100, "h": 100 }, // % of scene
-          "color": "rgba(...)",        // optional overlay tint
-          "image": "/path.png",        // optional sprite
+          "type": "hotspot",
+          "rect": { "x": 0, "y": 0, "w": 100, "h": 100 },
+          "color": "rgba(...)",
+          "image": "/path.png",
           "initiallyHidden": false,
           "visibleIf": { "type": "flag", "flag": "x" },
           "triggers": {
@@ -95,42 +126,32 @@ Triggers are arbitrary string keys; the engine just runs whichever action list m
 ### Add an adventure
 
 1. Add the JSON under `src/adventures/`.
-2. Append an entry to `adventureCatalog` in `src/adventures/index.ts`. Use a dynamic import so it lazy-loads.
+2. Append it to `adventureCatalog` in `src/adventures/index.ts`. Use a dynamic import so it lazy-loads. Set `devOnly: true` for fixtures.
 
-### Add an action type
+### Add an action / condition / object type
 
 ```ts
-import { actionRegistry } from './engine/registry';
-actionRegistry.register('myAction', (action, ctx) => {
-  // action: { type: 'myAction', ... }
-  // ctx:    { engine, object?, trigger? }
+import { actionRegistry, actionValidatorRegistry } from './engine/registry';
+actionRegistry.register('myAction', (action, ctx) => { /* ... */ });
+actionValidatorRegistry.register('myAction', (action) => {
+  return typeof action.foo === 'string' ? [] : ['"myAction" requires "foo"'];
 });
 ```
 
-Register it before the first `GameEngine` is constructed (or co-locate with `registerBuiltInActions` if it should always be available). Async handlers are supported; `runActions` awaits each.
+Validators are optional but recommended — they catch authoring mistakes at load-time before the player sees them.
 
-### Add a condition type
-
-Same pattern with `conditionRegistry`. Handler returns `boolean`.
-
-### Add a scene-object type
-
-```ts
-import { objectComponentRegistry } from './engine/registry';
-import MyObject from './components/MyObject.vue';
-objectComponentRegistry.register('myType', MyObject);
-```
-
-The component receives the `SceneObject` as a prop. `SceneObjectView` already provides the positioned, clickable wrapper; your component just renders the inner contents.
+Object types: `objectComponentRegistry.register('myType', MyComponent)`. The component receives the `SceneObject` as a prop.
 
 ## Conventions & gotchas
 
+- **Object ids must be globally unique across scenes.** `state.objectState` is keyed by `SceneObject.id` alone, so reusing an id leaks hide/show state between scenes. **Critical for dreams**: per-session persistence (a found object stays found across re-entries) relies on stable, scene-unique object ids. Don't rename them once authored.
 - **Don't break the percentage-based `rect`s** when changing `SCENE_WIDTH`/`SCENE_HEIGHT` — they're deliberately resolution-independent.
-- **`ensureBuiltInsRegistered()`** must be called before any `GameEngine` is constructed. `AdventureGame.vue` does this; if you instantiate the engine elsewhere, make sure to do it too.
+- **`ensureBuiltInsRegistered()`** must be called before any `GameEngine` is constructed. `AdventureGame.vue` and `StartPage.vue` both do this.
 - **State is `reactive`**, but `engine` itself is held in a `shallowRef` so swapping adventures replaces the entire instance cleanly.
-- **`SidePanel` and `GroundPanel` are placeholders.** The intent is to flesh them out in future work — likely with new action types like `dropItem` / `pickUpFromGround` and a `groundItems` map on either `Scene` or `GameState`.
+- **Saves are JSON, schema-versioned.** Bumping `SCHEMA_VERSION` in `engine.ts` invalidates older saves cleanly. Do that whenever the snapshot shape changes.
+- **The `wake` and `speakExitPhrase` actions clear `state.activePatientId`** but do not automatically end an active dialog. If you wake from inside a dialog choice, end the dialog explicitly (`endDialog` before/after the wake action).
 - **No comments unless they explain non-obvious WHY.** Don't restate code in prose.
-- **Don't introduce cross-cutting abstractions** for hypothetical future requirements. Two adventures of similar shape don't yet justify a base class.
+- **Don't introduce cross-cutting abstractions** for hypothetical future requirements.
 
 ## Deployment
 

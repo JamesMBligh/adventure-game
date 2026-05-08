@@ -1,5 +1,10 @@
 node_modules
 dist
+<<<<<<< HEAD
 .vite
 *.log
 story/
+=======
+.DS_Store
+*.log
+>>>>>>> 9e18c5cd178b752b09bd84c0314fc471d57c38b1
