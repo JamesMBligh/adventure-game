@@ -1,23 +1,22 @@
 import { reactive, computed, type ComputedRef } from 'vue';
-import type {
-  Action,
-  Adventure,
-  GameState,
-  NarrationEntry,
-  Scene,
-  SceneObject,
-} from '../types';
+import type { Action, Adventure, GameState, NarrationEntry, Scene, SceneObject } from '../types';
 import { registerBuiltInActions, runActions } from './actions';
 import { evaluateCondition, registerBuiltInConditions } from './conditions';
 import type { ActionContext } from './registry';
 
-let narrationCounter = 0;
-
-/** GameEngine ties together adventure data, mutable state, and the registries. */
+/**
+ * GameEngine ties together adventure data, mutable state, and the registries.
+ *
+ * NOTE: `state.objectState` is keyed by `SceneObject.id` alone, so object ids
+ * must be globally unique across scenes. Reusing an id in two scenes will
+ * cause hide/show overrides to leak between them.
+ */
 export class GameEngine {
   readonly adventure: Adventure;
   readonly state: GameState;
   readonly currentScene: ComputedRef<Scene>;
+  readonly visibleObjects: ComputedRef<SceneObject[]>;
+  private narrationCounter = 0;
 
   constructor(adventure: Adventure) {
     this.adventure = adventure;
@@ -37,29 +36,24 @@ export class GameEngine {
       }
       return scene;
     });
-  }
 
-  /** Visible objects for the current scene, after applying runtime overrides. */
-  visibleObjects(): SceneObject[] {
-    const scene = this.currentScene.value;
-    const ctx: ActionContext = { engine: this };
-    return (scene.objects ?? []).filter((obj) => {
-      const override = this.state.objectState[obj.id];
-      if (override?.hidden) return false;
-      if (override?.hidden === false) {
-        // Explicitly shown by an action: ignore initiallyHidden.
-      } else if (obj.initiallyHidden) {
-        return false;
-      }
-      if (obj.visibleIf && !evaluateCondition(obj.visibleIf, { ...ctx, object: obj })) {
-        return false;
-      }
-      return true;
+    this.visibleObjects = computed(() => {
+      const scene = this.currentScene.value;
+      const ctx: ActionContext = { engine: this };
+      return (scene.objects ?? []).filter((obj) => {
+        const override = this.state.objectState[obj.id];
+        if (override?.hidden) return false;
+        if (override?.hidden !== false && obj.initiallyHidden) return false;
+        if (obj.visibleIf && !evaluateCondition(obj.visibleIf, { ...ctx, object: obj })) {
+          return false;
+        }
+        return true;
+      });
     });
   }
 
   pushNarration(entry: Omit<NarrationEntry, 'id'>): void {
-    this.state.narration.push({ ...entry, id: ++narrationCounter });
+    this.state.narration.push({ ...entry, id: ++this.narrationCounter });
   }
 
   async enterScene(id: string): Promise<void> {

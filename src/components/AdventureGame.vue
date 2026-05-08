@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef, watch } from 'vue';
+import { computed, onMounted, shallowRef } from 'vue';
 import type { Adventure } from '../types';
 import { GameEngine, ensureBuiltInsRegistered } from '../engine/engine';
 import { SCENE_WIDTH } from '../engine/layout';
@@ -19,14 +19,6 @@ defineEmits<{
 ensureBuiltInsRegistered();
 
 const engine = shallowRef<GameEngine>(new GameEngine(props.adventure));
-
-watch(
-  () => props.adventure,
-  (next) => {
-    engine.value = new GameEngine(next);
-    void engine.value.start();
-  },
-);
 
 onMounted(() => {
   void engine.value.start();

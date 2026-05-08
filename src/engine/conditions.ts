@@ -1,15 +1,23 @@
 import type { Condition } from '../types';
-import { conditionRegistry, type ActionContext } from './registry';
+import { conditionRegistry, conditionValidatorRegistry, type ActionContext } from './registry';
 
 /** Evaluate a condition by dispatching to the registry. Falsy/missing -> true. */
 export function evaluateCondition(condition: Condition | undefined, ctx: ActionContext): boolean {
   if (!condition) return true;
   const handler = conditionRegistry.get(condition.type);
   if (!handler) {
-    console.warn(`[adventure-engine] Unknown condition type: ${condition.type}`);
+    const where = describeContext(ctx);
+    console.warn(`[adventure-engine] Unknown condition type: ${condition.type}${where}`);
     return false;
   }
   return handler(condition, ctx);
+}
+
+function describeContext(ctx: ActionContext): string {
+  const parts: string[] = [];
+  if (ctx.object?.id) parts.push(`object="${ctx.object.id}"`);
+  if (ctx.trigger) parts.push(`trigger="${ctx.trigger}"`);
+  return parts.length ? ` (at ${parts.join(', ')})` : '';
 }
 
 export function registerBuiltInConditions(): void {
@@ -47,4 +55,29 @@ export function registerBuiltInConditions(): void {
   conditionRegistry.register('not', (cond, ctx) => {
     return !evaluateCondition(cond.condition as Condition, ctx);
   });
+
+  registerBuiltInConditionValidators();
+}
+
+function requireConditionString(cond: Condition, key: string): string[] {
+  return typeof cond[key] === 'string' && (cond[key] as string).length > 0
+    ? []
+    : [`"${cond.type}" requires string field "${key}"`];
+}
+
+function requireConditionArray(cond: Condition, key: string): string[] {
+  return Array.isArray(cond[key]) ? [] : [`"${cond.type}" requires array field "${key}"`];
+}
+
+function registerBuiltInConditionValidators(): void {
+  conditionValidatorRegistry.register('flag', (c) => requireConditionString(c, 'flag'));
+  conditionValidatorRegistry.register('hasItem', (c) => requireConditionString(c, 'item'));
+  conditionValidatorRegistry.register('scene', (c) => requireConditionString(c, 'scene'));
+  conditionValidatorRegistry.register('and', (c) => requireConditionArray(c, 'conditions'));
+  conditionValidatorRegistry.register('or', (c) => requireConditionArray(c, 'conditions'));
+  conditionValidatorRegistry.register('not', (c) =>
+    c.condition && typeof c.condition === 'object'
+      ? []
+      : [`"not" requires object field "condition"`],
+  );
 }

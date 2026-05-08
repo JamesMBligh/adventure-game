@@ -14,8 +14,7 @@ export const adventureCatalog: AdventureCatalogEntry[] = [
   {
     id: 'cabin',
     title: 'The Cabin in the Clearing',
-    description:
-      'A short demo. Find your way into a moonlit cabin and discover what waits below.',
+    description: 'A short demo. Find your way into a moonlit cabin and discover what waits below.',
     author: 'Sample',
     load: async () => (await import('./cabin.json')).default as Adventure,
   },

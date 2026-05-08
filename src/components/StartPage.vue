@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { adventureCatalog, type AdventureCatalogEntry } from '../adventures';
 import type { Adventure } from '../types';
+import { ensureBuiltInsRegistered, validateAdventure, formatValidationErrors } from '../engine';
 
 const emit = defineEmits<{
   (e: 'start', adventure: Adventure, entry: AdventureCatalogEntry): void;
@@ -16,6 +17,15 @@ async function play(entry: AdventureCatalogEntry) {
   error.value = null;
   try {
     const adventure = await entry.load();
+    ensureBuiltInsRegistered();
+    const issues = validateAdventure(adventure);
+    if (issues.length > 0) {
+      console.error(
+        `[adventure-engine] "${entry.title}" failed validation:\n${formatValidationErrors(issues)}`,
+      );
+      error.value = `"${entry.title}" has ${issues.length} validation issue${issues.length === 1 ? '' : 's'}. See console for details.`;
+      return;
+    }
     emit('start', adventure, entry);
   } catch (err) {
     console.error(err);
@@ -43,11 +53,7 @@ async function play(entry: AdventureCatalogEntry) {
           <h3>{{ entry.title }}</h3>
           <p v-if="entry.author" class="author">by {{ entry.author }}</p>
           <p class="description">{{ entry.description }}</p>
-          <button
-            type="button"
-            :disabled="loadingId !== null"
-            @click="play(entry)"
-          >
+          <button type="button" :disabled="loadingId !== null" @click="play(entry)">
             {{ loadingId === entry.id ? 'Loading…' : 'Play' }}
           </button>
         </li>

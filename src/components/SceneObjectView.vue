@@ -56,7 +56,9 @@ const hasClick = computed(() => Boolean(props.object.triggers?.onClick?.length))
   border: 1px solid transparent;
   padding: 0;
   cursor: default;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .scene-object.clickable {

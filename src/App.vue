@@ -19,10 +19,5 @@ function handleExit() {
 
 <template>
   <StartPage v-if="!activeAdventure" @start="handleStart" />
-  <AdventureGame
-    v-else
-    :key="sessionKey"
-    :adventure="activeAdventure"
-    @exit="handleExit"
-  />
+  <AdventureGame v-else :key="sessionKey" :adventure="activeAdventure" @exit="handleExit" />
 </template>
