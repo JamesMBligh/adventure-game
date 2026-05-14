@@ -53,8 +53,10 @@ export interface SceneObject {
 export interface Scene {
   id?: string;
   name?: string;
-  /** Hub scenes are operator-side rooms; dream scenes run inside a patient's mind. */
-  kind?: 'hub' | 'dream';
+  /** Story-mode rooms (location, floorplan) render in the mansion view tree;
+   *  dream scenes run the point-and-click view. `hub` is retained for legacy
+   *  fixtures (cabin.json) that still use the original hotspot layout. */
+  kind?: 'hub' | 'dream' | 'location' | 'floorplan';
   /** Background image URL or CSS color. */
   background?: string;
   /** Description shown when entering (in addition to onEnter actions). */

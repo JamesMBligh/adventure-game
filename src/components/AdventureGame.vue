@@ -6,6 +6,7 @@ import { SCENE_WIDTH } from '../engine/layout';
 import SceneView from './SceneView.vue';
 import NarrationPanel from './NarrationPanel.vue';
 import SidePanel from './SidePanel.vue';
+import MansionView from './mansion/MansionView.vue';
 
 const props = defineProps<{
   adventure: Adventure;
@@ -32,6 +33,10 @@ onMounted(async () => {
 
 const scene = computed(() => engine.value.currentScene.value);
 const isDream = computed(() => scene.value.kind === 'dream');
+const isMansion = computed(() => {
+  const k = scene.value.kind;
+  return k === 'location' || k === 'floorplan';
+});
 const activePatient = computed(() => {
   const id = engine.value.state.activePatientId;
   if (!id) return null;
@@ -61,16 +66,19 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
         ← Menu
       </button>
       <h1>{{ headerTitle }}</h1>
-      <span v-if="!isDream && adventure.author" class="author">by {{ adventure.author }}</span>
-      <span v-else-if="isDream" class="mode-tag" aria-label="Inside a dream">in-dream</span>
+      <span v-if="isDream" class="mode-tag" aria-label="Inside a dream">in-dream</span>
+      <span v-else-if="adventure.author" class="author">by {{ adventure.author }}</span>
     </header>
 
     <div class="stage">
-      <div class="scene-column" :style="sceneColStyle">
-        <SceneView :engine="engine" />
-        <NarrationPanel :engine="engine" />
-      </div>
-      <SidePanel :engine="engine" :hide-case-files="isDream" />
+      <MansionView v-if="isMansion" :engine="engine" />
+      <template v-else>
+        <div class="scene-column" :style="sceneColStyle">
+          <SceneView :engine="engine" />
+          <NarrationPanel :engine="engine" />
+        </div>
+        <SidePanel :engine="engine" :hide-case-files="isDream" />
+      </template>
     </div>
   </div>
 </template>

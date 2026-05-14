@@ -126,7 +126,122 @@
                 { "type": "setPatientStatus", "patient": "whitfield", "status": "inResidence" },
                 { "type": "endDialog" },
                 { "type": "narrate", "kind": "system", "text": "— The next afternoon. —" },
-                { "type": "goto", "scene": "hall_landing" }
+                { "type": "goto", "scene": "mansion_first_floor" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "studyEmpty": {
+      "id": "studyEmpty",
+      "start": "open",
+      "nodes": {
+        "open": {
+          "speaker": "Ashley",
+          "text": "Wren's study, empty now. The lamp is low. The room remembers him.",
+          "choices": [
+            {
+              "text": "Step back to the landing.",
+              "actions": [
+                { "type": "endDialog" },
+                { "type": "goto", "scene": "mansion_first_floor" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "ashleyRoom": {
+      "id": "ashleyRoom",
+      "start": "open",
+      "nodes": {
+        "open": {
+          "speaker": "Ashley",
+          "text": "My room. Modest. Not new. The Whitfield file is on the bedside table where I left it.",
+          "choices": [
+            {
+              "text": "Read the file again.",
+              "actions": [
+                { "type": "narrate", "text": "I read it again, as Elias did not ask. The same five pages. The phrase, on the inside cover, in his hand: the light in the conservatory." },
+                { "type": "addItem", "item": "caseFile" },
+                { "type": "setFlag", "flag": "examinedFile", "value": true }
+              ],
+              "next": "after_read"
+            },
+            {
+              "text": "Sit at the window a while.",
+              "actions": [
+                { "type": "narrate", "text": "The window faces the courtyard. The rain has not quite committed to falling. The minutes pass and the courtyard does not change." }
+              ]
+            },
+            {
+              "text": "Step out to the landing.",
+              "actions": [
+                { "type": "endDialog" },
+                { "type": "goto", "scene": "mansion_first_floor" }
+              ]
+            }
+          ]
+        },
+        "after_read": {
+          "speaker": "Ashley",
+          "text": "I close the file. The lamp is steady. Five pages, and the phrase on the inside cover.",
+          "choices": [
+            {
+              "text": "Step out to the landing.",
+              "actions": [
+                { "type": "endDialog" },
+                { "type": "goto", "scene": "mansion_first_floor" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "treatmentBegin": {
+      "id": "treatmentBegin",
+      "start": "open",
+      "nodes": {
+        "open": {
+          "speaker": "Ashley",
+          "text": "The treatment room. Three chairs and a rig of instruments. Mrs. Whitfield is in the patient's chair, sedated, breathing slowly. Wren stands at the rig.",
+          "choices": [
+            {
+              "text": "Look at Catherine.",
+              "actions": [
+                { "type": "narrate", "text": "Her hands are folded in her lap. The freeze hasn't reached them here." }
+              ]
+            },
+            {
+              "text": "Look at the rig.",
+              "actions": [
+                { "type": "narrate", "text": "Glass instruments. A thin amber line moving across a paper drum. Wren's hand rests on the dial." }
+              ]
+            },
+            {
+              "text": "Sit in the operator's chair.",
+              "visibleIf": { "type": "flag", "flag": "examinedFile" },
+              "actions": [
+                { "type": "narrate", "kind": "system", "text": "You sit. Wren sets the timer. The room narrows to the lamp and his hands at the rig." },
+                { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "When you are ready." },
+                { "type": "endDialog" },
+                { "type": "enterDream", "patient": "whitfield" }
+              ]
+            },
+            {
+              "text": "Sit in the operator's chair.",
+              "visibleIf": { "type": "not", "condition": { "type": "flag", "flag": "examinedFile" } },
+              "actions": [
+                { "type": "narrate", "text": "You hesitate. Wren glances at you over the rig." },
+                { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "Read the file again before we begin. It's still on the bedside table." }
+              ]
+            },
+            {
+              "text": "Step back to the landing.",
+              "actions": [
+                { "type": "endDialog" },
+                { "type": "goto", "scene": "mansion_first_floor" }
               ]
             }
           ]
@@ -266,7 +381,8 @@
                 { "type": "setPatientStatus", "patient": "whitfield", "status": "improving" },
                 { "type": "recordPatientNote", "patient": "whitfield", "note": "Walked the corridor with her." },
                 { "type": "narrate", "kind": "system", "text": "Mrs. Whitfield will sleep through the afternoon. She will be brighter at supper than she has been in fifteen months." },
-                { "type": "endDialog" }
+                { "type": "endDialog" },
+                { "type": "goto", "scene": "mansion_first_floor" }
               ]
             }
           ]
@@ -280,7 +396,8 @@
               "actions": [
                 { "type": "setPatientStatus", "patient": "whitfield", "status": "unhelped" },
                 { "type": "recordPatientNote", "patient": "whitfield", "note": "Session ended without reaching the corridor." },
-                { "type": "endDialog" }
+                { "type": "endDialog" },
+                { "type": "goto", "scene": "mansion_first_floor" }
               ]
             }
           ]
@@ -291,48 +408,39 @@
   "scenes": {
     "study": {
       "name": "Wren's Study",
-      "kind": "hub",
+      "kind": "location",
       "background": "linear-gradient(180deg, #2a1d12 0%, #140e0a 100%)",
-      "description": "Eight in the evening. The lamp on Wren's desk is set low. Outside, the rain has not quite committed to falling.",
       "onEnter": [
-        { "type": "narrate", "kind": "system", "text": "Sit. He has set a second chair across from his own." },
-        { "type": "startDialog", "dialog": "wrenOffer" }
-      ],
-      "objects": [
-        { "id": "study_lamp", "name": "Desk lamp", "rect": { "x": 70, "y": 40, "w": 8, "h": 18 }, "color": "rgba(255, 200, 120, 0.10)" },
-        { "id": "study_chair", "name": "The second chair", "rect": { "x": 30, "y": 55, "w": 16, "h": 30 } },
-        { "id": "study_file", "name": "Whitfield's file", "rect": { "x": 60, "y": 60, "w": 18, "h": 10 }, "color": "rgba(255, 230, 180, 0.06)" }
+        {
+          "type": "if",
+          "condition": { "type": "flag", "flag": "offerAccepted" },
+          "then": [
+            { "type": "startDialog", "dialog": "studyEmpty" }
+          ],
+          "else": [
+            { "type": "narrate", "kind": "system", "text": "Eight in the evening. Wren has set a second chair across from his own." },
+            { "type": "startDialog", "dialog": "wrenOffer" }
+          ]
+        }
       ]
     },
-    "hall_landing": {
-      "name": "The Landing",
-      "kind": "hub",
-      "background": "linear-gradient(180deg, #1c1a26 0%, #100e18 100%)",
-      "description": "The first-floor landing. Three doors. The house at this hour belongs to the people who know it.",
+    "mansion_first_floor": {
+      "name": "First Floor — The Wren House",
+      "kind": "floorplan",
+      "background": "linear-gradient(180deg, #1a1822 0%, #100e18 100%)",
+      "description": "The first floor of the house. You can move between rooms.",
       "objects": [
         {
-          "id": "door_ashley",
-          "name": "Ashley's room",
-          "rect": { "x": 8, "y": 30, "w": 16, "h": 50 },
-          "color": "rgba(220, 180, 140, 0.08)",
-          "triggers": { "onClick": [{ "type": "goto", "scene": "ashley_room" }] }
+          "id": "ff_study",
+          "name": "Wren's Study",
+          "rect": { "x": 8, "y": 10, "w": 38, "h": 35 },
+          "triggers": { "onClick": [{ "type": "goto", "scene": "study" }] }
         },
         {
-          "id": "door_device",
-          "name": "The treatment room",
-          "rect": { "x": 42, "y": 30, "w": 16, "h": 50 },
-          "color": "rgba(140, 200, 220, 0.10)",
-          "triggers": { "onClick": [{ "type": "goto", "scene": "device_room" }] }
-        },
-        {
-          "id": "door_parents",
-          "name": "The closed door",
-          "rect": { "x": 76, "y": 30, "w": 16, "h": 50 },
-          "color": "rgba(180, 100, 100, 0.08)",
+          "id": "ff_parents",
+          "name": "Parents' Suite (closed)",
+          "rect": { "x": 54, "y": 10, "w": 38, "h": 35 },
           "triggers": {
-            "onHover": [
-              { "type": "narrate", "kind": "system", "text": "You don't go in there." }
-            ],
             "onClick": [
               {
                 "type": "if",
@@ -345,93 +453,35 @@
               }
             ]
           }
+        },
+        {
+          "id": "ff_ashley",
+          "name": "Ashley's Room",
+          "rect": { "x": 8, "y": 55, "w": 38, "h": 35 },
+          "triggers": { "onClick": [{ "type": "goto", "scene": "ashley_room" }] }
+        },
+        {
+          "id": "ff_treatment",
+          "name": "Treatment Room",
+          "rect": { "x": 54, "y": 55, "w": 38, "h": 35 },
+          "triggers": { "onClick": [{ "type": "goto", "scene": "device_room" }] }
         }
       ]
     },
     "ashley_room": {
       "name": "Ashley's Room",
-      "kind": "hub",
+      "kind": "location",
       "background": "linear-gradient(180deg, #1f1815 0%, #100c0a 100%)",
-      "description": "Your room. Modest. Not new. The file is on the bedside table where you left it.",
-      "objects": [
-        {
-          "id": "room_file",
-          "name": "Whitfield case file",
-          "rect": { "x": 60, "y": 50, "w": 22, "h": 14 },
-          "color": "rgba(220, 200, 160, 0.10)",
-          "triggers": {
-            "onClick": [
-              { "type": "narrate", "text": "You read it again, as Elias did not ask. The same five pages. The phrase, on the inside cover, in his hand: the light in the conservatory." },
-              { "type": "addItem", "item": "caseFile" },
-              { "type": "setFlag", "flag": "examinedFile", "value": true }
-            ]
-          }
-        },
-        {
-          "id": "room_door",
-          "name": "Door to the landing",
-          "rect": { "x": 4, "y": 30, "w": 12, "h": 50 },
-          "triggers": { "onClick": [{ "type": "goto", "scene": "hall_landing" }] }
-        }
+      "onEnter": [
+        { "type": "startDialog", "dialog": "ashleyRoom" }
       ]
     },
     "device_room": {
       "name": "The Treatment Room",
-      "kind": "hub",
+      "kind": "location",
       "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
-      "description": "Three chairs and a rig of instruments. Mrs. Whitfield is in the patient's chair, sedated, breathing slowly.",
-      "objects": [
-        {
-          "id": "device_chair_patient",
-          "name": "Catherine Whitfield (sedated)",
-          "rect": { "x": 14, "y": 30, "w": 22, "h": 55 },
-          "color": "rgba(220, 220, 240, 0.06)",
-          "triggers": {
-            "onClick": [
-              { "type": "narrate", "text": "Her hands are folded in her lap. The freeze hasn't reached them here." }
-            ]
-          }
-        },
-        {
-          "id": "device_chair_operator",
-          "name": "The operator's chair",
-          "rect": { "x": 42, "y": 30, "w": 22, "h": 55 },
-          "color": "rgba(255, 200, 120, 0.10)",
-          "triggers": {
-            "onClick": [
-              {
-                "type": "if",
-                "condition": { "type": "flag", "flag": "examinedFile" },
-                "then": [
-                  { "type": "narrate", "kind": "system", "text": "You sit. Wren sets the timer. The room narrows to the lamp and his hands at the rig." },
-                  { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "When you are ready." },
-                  { "type": "enterDream", "patient": "whitfield" }
-                ],
-                "else": [
-                  { "type": "narrate", "text": "You hesitate. Wren glances at you over the rig." },
-                  { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "Read the file again before we begin. It's still on the bedside table." }
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "id": "device_monitor",
-          "name": "The rig",
-          "rect": { "x": 70, "y": 35, "w": 18, "h": 30 },
-          "color": "rgba(200, 220, 200, 0.06)",
-          "triggers": {
-            "onClick": [
-              { "type": "narrate", "text": "Glass instruments. A thin amber line moving across a paper drum. Wren's hand rests on the dial." }
-            ]
-          }
-        },
-        {
-          "id": "device_door",
-          "name": "Back to the landing",
-          "rect": { "x": 4, "y": 78, "w": 8, "h": 14 },
-          "triggers": { "onClick": [{ "type": "goto", "scene": "hall_landing" }] }
-        }
+      "onEnter": [
+        { "type": "startDialog", "dialog": "treatmentBegin" }
       ]
     },
     "whitfield_stage": {
@@ -547,19 +597,10 @@
     },
     "device_room_after": {
       "name": "The Treatment Room",
-      "kind": "hub",
+      "kind": "location",
       "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
-      "description": "You are back in the chair. The amber line on the paper drum is steady. Wren's hand is no longer at the dial.",
       "onEnter": [
         { "type": "startDialog", "dialog": "debrief" }
-      ],
-      "objects": [
-        {
-          "id": "device_after_door",
-          "name": "Back to the landing",
-          "rect": { "x": 4, "y": 78, "w": 14, "h": 14 },
-          "triggers": { "onClick": [{ "type": "goto", "scene": "hall_landing" }] }
-        }
       ]
     }
   }
