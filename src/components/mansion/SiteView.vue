@@ -2,24 +2,23 @@
 import { computed } from 'vue';
 import type { GameEngine } from '../../engine';
 import { SCENE_HEIGHT, SCENE_WIDTH } from '../../engine/layout';
-import type { SceneObject } from '../../types';
+import type { SiteLocation } from '../../types';
 import NarrationPanel from '../NarrationPanel.vue';
 
 const props = defineProps<{
   engine: GameEngine;
 }>();
 
-const scene = computed(() => props.engine.currentScene.value);
-const rooms = computed(() => props.engine.visibleObjects.value);
-const inDialog = computed(() => props.engine.state.dialogState !== null);
+const site = computed(() => props.engine.currentSite.value);
+const locations = computed(() => props.engine.visibleLocations.value);
 
 const backgroundStyle = computed(() => {
-  const bg = scene.value.background;
+  const bg = site.value?.background;
   return bg ? { background: bg } : { background: '#1a1722' };
 });
 
-function rectStyle(obj: SceneObject) {
-  const r = obj.rect ?? { x: 0, y: 0, w: 100, h: 100 };
+function rectStyle(loc: SiteLocation) {
+  const r = loc.rect;
   return {
     left: `${r.x}%`,
     top: `${r.y}%`,
@@ -28,44 +27,37 @@ function rectStyle(obj: SceneObject) {
   };
 }
 
-function click(obj: SceneObject) {
-  if (inDialog.value) return;
-  void props.engine.fireTrigger(obj, 'onClick');
-}
-
-function hover(obj: SceneObject) {
-  if (inDialog.value) return;
-  void props.engine.fireTrigger(obj, 'onHover');
+function click(id: string) {
+  void props.engine.clickLocation(id);
 }
 </script>
 
 <template>
-  <div class="floorplan" :style="{ width: `${SCENE_WIDTH}px` }">
+  <div class="site" :style="{ width: `${SCENE_WIDTH}px` }">
     <div class="map" :style="{ height: `${SCENE_HEIGHT}px`, ...backgroundStyle }">
       <div class="grid-overlay" aria-hidden="true" />
-      <div class="map-frame" :class="{ disabled: inDialog }">
+      <div class="map-frame">
         <button
-          v-for="obj in rooms"
-          :key="obj.id"
+          v-for="entry in locations"
+          :key="entry.id"
           type="button"
           class="room"
-          :style="rectStyle(obj)"
-          :aria-label="obj.name"
-          :disabled="inDialog"
-          @click="click(obj)"
-          @mouseenter="hover(obj)"
+          :class="{ 'is-transition': !!entry.location.target }"
+          :style="rectStyle(entry.location)"
+          :aria-label="entry.location.name"
+          @click="click(entry.id)"
         >
-          <span class="room-name">{{ obj.name }}</span>
+          <span class="room-name">{{ entry.location.name }}</span>
         </button>
       </div>
-      <div class="map-title">{{ scene.name }}</div>
+      <div class="map-title">{{ site?.name }}</div>
     </div>
     <NarrationPanel :engine="engine" />
   </div>
 </template>
 
 <style scoped>
-.floorplan {
+.site {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -95,7 +87,7 @@ function hover(obj: SceneObject) {
 
 .room {
   position: absolute;
-  background: rgba(120, 100, 80, 0.10);
+  background: rgba(120, 100, 80, 0.1);
   border: 1px dashed rgba(220, 200, 160, 0.45);
   color: var(--ink);
   font: inherit;
@@ -105,18 +97,27 @@ function hover(obj: SceneObject) {
   justify-content: center;
   text-align: center;
   padding: 0.5rem;
-  transition: background 120ms, border-color 120ms, color 120ms;
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms;
 }
 
-.room:hover:not(:disabled) {
+.room:hover {
   background: rgba(255, 200, 120, 0.15);
   border-color: var(--hot);
   color: var(--hot);
 }
 
-.room:disabled {
-  cursor: default;
-  opacity: 0.55;
+.room.is-transition {
+  background: rgba(120, 180, 220, 0.08);
+  border-style: dotted;
+}
+
+.room.is-transition:hover {
+  background: rgba(160, 220, 255, 0.15);
+  border-color: #9dc8ff;
+  color: #9dc8ff;
 }
 
 .room-name {
@@ -138,7 +139,7 @@ function hover(obj: SceneObject) {
   pointer-events: none;
 }
 
-.floorplan > :deep(.narration) {
+.site > :deep(.narration) {
   height: 200px;
 }
 </style>

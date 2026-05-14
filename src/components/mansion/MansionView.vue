@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { GameEngine } from '../../engine';
-import LocationView from './LocationView.vue';
-import FloorplanView from './FloorplanView.vue';
+import InteractionView from './InteractionView.vue';
+import SiteView from './SiteView.vue';
 
 const props = defineProps<{
   engine: GameEngine;
 }>();
 
-const kind = computed(() => props.engine.currentScene.value.kind);
+const inInteraction = computed(() => props.engine.state.activeInteractionId !== null);
 </script>
 
 <template>
-  <FloorplanView v-if="kind === 'floorplan'" :engine="engine" />
-  <LocationView v-else :engine="engine" />
+  <InteractionView v-if="inInteraction" :engine="engine" />
+  <SiteView v-else :engine="engine" />
 </template>

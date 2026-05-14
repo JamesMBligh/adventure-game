@@ -85,7 +85,7 @@ describe('runActions', () => {
 
   it('hideObject defaults to the triggering object', async () => {
     const engine = makeEngine();
-    const rock = engine.adventure.scenes.a.objects![0];
+    const rock = engine.adventure.scenes!.a.objects![0];
     await runActions([{ type: 'hideObject' }], { engine, object: rock });
     expect(engine.visibleObjects.value.map((o) => o.id)).toEqual([]);
   });

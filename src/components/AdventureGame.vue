@@ -32,11 +32,13 @@ onMounted(async () => {
 });
 
 const scene = computed(() => engine.value.currentScene.value);
-const isDream = computed(() => scene.value.kind === 'dream');
-const isMansion = computed(() => {
-  const k = scene.value.kind;
-  return k === 'location' || k === 'floorplan';
-});
+const site = computed(() => engine.value.currentSite.value);
+const interaction = computed(() => engine.value.activeInteraction.value);
+const isMansion = computed(
+  () =>
+    engine.value.state.currentSiteId !== null || engine.value.state.activeInteractionId !== null,
+);
+const isDream = computed(() => !isMansion.value && scene.value?.kind === 'dream');
 const activePatient = computed(() => {
   const id = engine.value.state.activePatientId;
   if (!id) return null;
@@ -53,7 +55,14 @@ const headerTitle = computed(() => {
     const lastName = activePatient.value.name.split(/\s+/).pop() ?? activePatient.value.name;
     return `${lastName} — Session ${sessionsCompleted.value}`;
   }
-  return scene.value.name ?? props.adventure.title;
+  if (interaction.value) {
+    const loc = site.value?.locations?.[interaction.value.location];
+    return loc?.name ?? site.value?.name ?? props.adventure.title;
+  }
+  if (site.value) {
+    return site.value.name ?? props.adventure.title;
+  }
+  return scene.value?.name ?? props.adventure.title;
 });
 
 const sceneColStyle = { width: `${SCENE_WIDTH}px` };

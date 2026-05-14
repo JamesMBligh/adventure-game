@@ -14,7 +14,7 @@ const scene = computed(() => props.engine.currentScene.value);
 const objects = computed(() => props.engine.visibleObjects.value);
 
 const backgroundStyle = computed(() => {
-  const bg = scene.value.background;
+  const bg = scene.value?.background;
   if (!bg) return { background: '#1a1722' };
   if (!isUrlLike(bg)) return { background: bg };
   return {
@@ -47,7 +47,7 @@ function handleHover(obj: SceneObject) {
         @hover="handleHover"
       />
     </div>
-    <div class="scene-title">{{ scene.name }}</div>
+    <div class="scene-title">{{ scene?.name }}</div>
   </div>
 </template>
 

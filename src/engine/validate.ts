@@ -21,27 +21,112 @@ export interface AdventureValidationError {
  */
 export function validateAdventure(adventure: Adventure): AdventureValidationError[] {
   const errors: AdventureValidationError[] = [];
+  const scenes = adventure.scenes ?? {};
+  const sites = adventure.sites ?? {};
+  const dialogs = adventure.dialogs ?? {};
+  const flags = adventure.flags ?? {};
+  const interactions = adventure.interactions ?? [];
 
-  if (!adventure.scenes[adventure.startScene]) {
+  if (!adventure.startScene && !adventure.startSite) {
+    errors.push({
+      path: 'start',
+      message: 'adventure must define either startScene or startSite',
+    });
+  }
+  if (adventure.startScene && !scenes[adventure.startScene]) {
     errors.push({
       path: 'startScene',
       message: `startScene "${adventure.startScene}" is not defined in scenes`,
     });
   }
+  if (adventure.startSite && !sites[adventure.startSite]) {
+    errors.push({
+      path: 'startSite',
+      message: `startSite "${adventure.startSite}" is not defined in sites`,
+    });
+  }
+  if (adventure.startInteraction) {
+    const found = interactions.find((it) => it.id === adventure.startInteraction);
+    if (!found) {
+      errors.push({
+        path: 'startInteraction',
+        message: `startInteraction "${adventure.startInteraction}" is not defined in interactions`,
+      });
+    }
+  }
 
-  for (const [sceneId, scene] of Object.entries(adventure.scenes)) {
-    walkActions(scene.onEnter, `scenes.${sceneId}.onEnter`, errors);
-    walkActions(scene.onExit, `scenes.${sceneId}.onExit`, errors);
+  for (const [sceneId, scene] of Object.entries(scenes)) {
+    walkActions(scene.onEnter, `scenes.${sceneId}.onEnter`, errors, adventure);
+    walkActions(scene.onExit, `scenes.${sceneId}.onExit`, errors, adventure);
     for (const obj of scene.objects ?? []) {
       const objPath = `scenes.${sceneId}.objects[${obj.id}]`;
-      if (obj.visibleIf) walkCondition(obj.visibleIf, `${objPath}.visibleIf`, errors);
+      if (obj.visibleIf) walkCondition(obj.visibleIf, `${objPath}.visibleIf`, errors, adventure);
       for (const [trigger, actions] of Object.entries(obj.triggers ?? {})) {
-        walkActions(actions, `${objPath}.triggers.${trigger}`, errors);
+        walkActions(actions, `${objPath}.triggers.${trigger}`, errors, adventure);
       }
     }
   }
 
-  for (const [dialogId, dialog] of Object.entries(adventure.dialogs ?? {})) {
+  const locationIds = new Set<string>();
+  for (const [siteId, site] of Object.entries(sites)) {
+    walkActions(site.onEnter, `sites.${siteId}.onEnter`, errors, adventure);
+    walkActions(site.onExit, `sites.${siteId}.onExit`, errors, adventure);
+    if (!site.locations || typeof site.locations !== 'object') {
+      errors.push({ path: `sites.${siteId}.locations`, message: 'must be an object' });
+      continue;
+    }
+    for (const [locId, loc] of Object.entries(site.locations)) {
+      const locPath = `sites.${siteId}.locations.${locId}`;
+      if (locationIds.has(locId)) {
+        errors.push({ path: locPath, message: `location id "${locId}" is not globally unique` });
+      } else {
+        locationIds.add(locId);
+      }
+      if (!loc.name) errors.push({ path: `${locPath}.name`, message: 'name is required' });
+      if (!loc.rect || typeof loc.rect !== 'object') {
+        errors.push({ path: `${locPath}.rect`, message: 'rect is required' });
+      }
+      if (loc.target && !sites[loc.target]) {
+        errors.push({
+          path: `${locPath}.target`,
+          message: `target site "${loc.target}" is not defined`,
+        });
+      }
+    }
+  }
+
+  const seenInteractionIds = new Set<string>();
+  interactions.forEach((interaction, i) => {
+    const path = `interactions[${i}]`;
+    if (!interaction.id) {
+      errors.push({ path: `${path}.id`, message: 'id is required' });
+    } else if (seenInteractionIds.has(interaction.id)) {
+      errors.push({ path: `${path}.id`, message: `duplicate interaction id "${interaction.id}"` });
+    } else {
+      seenInteractionIds.add(interaction.id);
+    }
+    if (!interaction.location) {
+      errors.push({ path: `${path}.location`, message: 'location is required' });
+    } else if (!locationIds.has(interaction.location)) {
+      errors.push({
+        path: `${path}.location`,
+        message: `location "${interaction.location}" is not defined on any site`,
+      });
+    }
+    if (interaction.dialog && !dialogs[interaction.dialog]) {
+      errors.push({
+        path: `${path}.dialog`,
+        message: `dialog "${interaction.dialog}" is not defined`,
+      });
+    }
+    (interaction.conditions ?? []).forEach((cond, ci) =>
+      walkCondition(cond, `${path}.conditions[${ci}]`, errors, adventure),
+    );
+    walkActions(interaction.onEnter, `${path}.onEnter`, errors, adventure);
+    walkActions(interaction.onExit, `${path}.onExit`, errors, adventure);
+  });
+
+  for (const [dialogId, dialog] of Object.entries(dialogs)) {
     if (!dialog.nodes[dialog.start]) {
       errors.push({
         path: `dialogs.${dialogId}.start`,
@@ -58,8 +143,9 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
         if (typeof choice.text !== 'string' || !choice.text) {
           errors.push({ path: `${cPath}.text`, message: 'choice text must be a non-empty string' });
         }
-        if (choice.visibleIf) walkCondition(choice.visibleIf, `${cPath}.visibleIf`, errors);
-        if (choice.actions) walkActions(choice.actions, `${cPath}.actions`, errors);
+        if (choice.visibleIf)
+          walkCondition(choice.visibleIf, `${cPath}.visibleIf`, errors, adventure);
+        if (choice.actions) walkActions(choice.actions, `${cPath}.actions`, errors, adventure);
         if (choice.next && !dialog.nodes[choice.next]) {
           errors.push({
             path: `${cPath}.next`,
@@ -71,10 +157,26 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
   }
 
   for (const [patientId, patient] of Object.entries(adventure.patients ?? {})) {
-    if (!adventure.scenes[patient.dreamScene]) {
+    if (!scenes[patient.dreamScene]) {
       errors.push({
         path: `patients.${patientId}.dreamScene`,
         message: `dreamScene "${patient.dreamScene}" is not defined in scenes`,
+      });
+    }
+  }
+
+  for (const [flagName, def] of Object.entries(flags)) {
+    if (def === null || typeof def !== 'object') {
+      errors.push({
+        path: `flags.${flagName}`,
+        message: 'flag definition must be an object with a "default" field',
+      });
+      continue;
+    }
+    if (typeof def.default !== 'boolean') {
+      errors.push({
+        path: `flags.${flagName}.default`,
+        message: 'flag default must be a boolean',
       });
     }
   }
@@ -86,16 +188,22 @@ function walkActions(
   actions: Action[] | undefined,
   path: string,
   errors: AdventureValidationError[],
+  adventure: Adventure,
 ): void {
   if (!actions) return;
   if (!Array.isArray(actions)) {
     errors.push({ path, message: 'expected an array of actions' });
     return;
   }
-  actions.forEach((action, i) => walkAction(action, `${path}[${i}]`, errors));
+  actions.forEach((action, i) => walkAction(action, `${path}[${i}]`, errors, adventure));
 }
 
-function walkAction(action: Action, path: string, errors: AdventureValidationError[]): void {
+function walkAction(
+  action: Action,
+  path: string,
+  errors: AdventureValidationError[],
+  adventure: Adventure,
+): void {
   if (!action || typeof action !== 'object' || typeof action.type !== 'string') {
     errors.push({ path, message: 'action must be an object with a string "type"' });
     return;
@@ -108,15 +216,22 @@ function walkAction(action: Action, path: string, errors: AdventureValidationErr
   if (validator) {
     for (const msg of validator(action)) errors.push({ path, message: msg });
   }
-  // Recurse into known nested action shapes so we catch problems inside if/sequence.
+  if (action.type === 'setFlag' && typeof action.flag === 'string' && adventure.flags) {
+    if (!adventure.flags[action.flag]) {
+      errors.push({ path, message: `setFlag references undeclared flag "${action.flag}"` });
+    }
+  }
   if (action.type === 'if') {
-    if (action.condition) walkCondition(action.condition as Condition, `${path}.condition`, errors);
-    if (Array.isArray(action.then)) walkActions(action.then as Action[], `${path}.then`, errors);
-    if (Array.isArray(action.else)) walkActions(action.else as Action[], `${path}.else`, errors);
+    if (action.condition)
+      walkCondition(action.condition as Condition, `${path}.condition`, errors, adventure);
+    if (Array.isArray(action.then))
+      walkActions(action.then as Action[], `${path}.then`, errors, adventure);
+    if (Array.isArray(action.else))
+      walkActions(action.else as Action[], `${path}.else`, errors, adventure);
   } else if (action.type === 'sequence' && Array.isArray(action.actions)) {
-    walkActions(action.actions as Action[], `${path}.actions`, errors);
+    walkActions(action.actions as Action[], `${path}.actions`, errors, adventure);
   } else if (action.type === 'speakExitPhrase' && Array.isArray(action.onWrong)) {
-    walkActions(action.onWrong as Action[], `${path}.onWrong`, errors);
+    walkActions(action.onWrong as Action[], `${path}.onWrong`, errors, adventure);
   }
 }
 
@@ -124,6 +239,7 @@ function walkCondition(
   condition: Condition,
   path: string,
   errors: AdventureValidationError[],
+  adventure: Adventure,
 ): void {
   if (!condition || typeof condition !== 'object' || typeof condition.type !== 'string') {
     errors.push({ path, message: 'condition must be an object with a string "type"' });
@@ -137,15 +253,20 @@ function walkCondition(
   if (validator) {
     for (const msg of validator(condition)) errors.push({ path, message: msg });
   }
+  if (condition.type === 'flag' && typeof condition.flag === 'string' && adventure.flags) {
+    if (!adventure.flags[condition.flag]) {
+      errors.push({ path, message: `condition references undeclared flag "${condition.flag}"` });
+    }
+  }
   if (
     (condition.type === 'and' || condition.type === 'or') &&
     Array.isArray(condition.conditions)
   ) {
     (condition.conditions as Condition[]).forEach((c, i) =>
-      walkCondition(c, `${path}.conditions[${i}]`, errors),
+      walkCondition(c, `${path}.conditions[${i}]`, errors, adventure),
     );
   } else if (condition.type === 'not' && condition.condition) {
-    walkCondition(condition.condition as Condition, `${path}.condition`, errors);
+    walkCondition(condition.condition as Condition, `${path}.condition`, errors, adventure);
   }
 }
 
