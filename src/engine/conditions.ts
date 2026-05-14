@@ -72,7 +72,18 @@ export function registerBuiltInConditions(): void {
 
   // { type: "inDream" } -- true when current scene's kind is 'dream'.
   conditionRegistry.register('inDream', (_cond, { engine }) => {
-    return engine.currentScene.value.kind === 'dream';
+    return engine.currentScene.value?.kind === 'dream';
+  });
+
+  // { type: "inMansion" } -- true when the player is in mansion mode
+  // (on a site or in an interaction).
+  conditionRegistry.register('inMansion', (_cond, { engine }) => {
+    return engine.state.currentSiteId !== null || engine.state.activeInteractionId !== null;
+  });
+
+  // { type: "atSite", site: "mansion_first_floor" }
+  conditionRegistry.register('atSite', (cond, { engine }) => {
+    return engine.state.currentSiteId === (cond.site as string);
   });
 
   // { type: "activePatient", patient: "whitfield" }
@@ -113,5 +124,7 @@ function registerBuiltInConditionValidators(): void {
     ...requireConditionString(c, 'note'),
   ]);
   conditionValidatorRegistry.register('inDream', () => []);
+  conditionValidatorRegistry.register('inMansion', () => []);
+  conditionValidatorRegistry.register('atSite', (c) => requireConditionString(c, 'site'));
   conditionValidatorRegistry.register('activePatient', (c) => requireConditionString(c, 'patient'));
 }

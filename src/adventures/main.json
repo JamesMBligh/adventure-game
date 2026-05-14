@@ -1,15 +1,39 @@
 {
   "title": "The Wren House",
   "author": "—",
-  "startScene": "study",
-  "initialState": {
-    "flags": {
-      "offerAccepted": false,
-      "consideredTeacher": false,
-      "walkedCorridor": false,
-      "midGameUnlocked": false,
-      "examinedFile": false
+  "startSite": "mansion_first_floor",
+  "startInteraction": "study_offer",
+  "flags": {
+    "offerAccepted": {
+      "default": false,
+      "description": "Wren has formally asked Ashley to operate Mrs. Whitfield's next session."
     },
+    "consideredTeacher": {
+      "default": false,
+      "description": "Ashley asked Catherine in the dream about who taught her to play."
+    },
+    "walkedCorridor": {
+      "default": false,
+      "description": "Ashley walked the back-of-stage corridor with Catherine in the dream."
+    },
+    "midGameUnlocked": {
+      "default": false,
+      "description": "The parents' suite has been opened. Reserved for later content."
+    },
+    "examinedFile": {
+      "default": false,
+      "description": "Ashley re-read the Whitfield file in her room."
+    },
+    "sessionCompleted": {
+      "default": false,
+      "description": "Ashley sat in the operator's chair and entered the dream."
+    },
+    "debriefComplete": {
+      "default": false,
+      "description": "Ashley has debriefed with Wren after the session."
+    }
+  },
+  "initialState": {
     "inventory": []
   },
   "items": {
@@ -27,6 +51,98 @@
       "maxSessions": 6
     }
   },
+  "sites": {
+    "mansion_first_floor": {
+      "name": "First Floor — The Wren House",
+      "background": "linear-gradient(180deg, #1a1822 0%, #100e18 100%)",
+      "locations": {
+        "study": {
+          "name": "Wren's Study",
+          "rect": { "x": 8, "y": 10, "w": 38, "h": 35 }
+        },
+        "parents_suite": {
+          "name": "Parents' Suite",
+          "rect": { "x": 54, "y": 10, "w": 38, "h": 35 }
+        },
+        "ashleys_room": {
+          "name": "Ashley's Room",
+          "rect": { "x": 8, "y": 55, "w": 38, "h": 35 }
+        },
+        "treatment_room": {
+          "name": "Treatment Room",
+          "rect": { "x": 54, "y": 55, "w": 38, "h": 35 }
+        }
+      }
+    }
+  },
+  "interactions": [
+    {
+      "id": "study_offer",
+      "location": "study",
+      "conditions": [
+        { "type": "not", "condition": { "type": "flag", "flag": "offerAccepted" } }
+      ],
+      "background": "linear-gradient(180deg, #2a1d12 0%, #140e0a 100%)",
+      "animations": ["lamp-flicker", "vignette-flicker"],
+      "onEnter": [
+        {
+          "type": "narrate",
+          "kind": "system",
+          "text": "Eight in the evening. Wren has set a second chair across from his own."
+        }
+      ],
+      "dialog": "wrenOffer"
+    },
+    {
+      "id": "study_empty",
+      "location": "study",
+      "background": "linear-gradient(180deg, #2a1d12 0%, #140e0a 100%)",
+      "animations": ["dim", "lamp-flicker"],
+      "dialog": "studyEmpty"
+    },
+    {
+      "id": "ashley_reading",
+      "location": "ashleys_room",
+      "background": "linear-gradient(180deg, #1f1815 0%, #100c0a 100%)",
+      "animations": ["lamp-flicker"],
+      "dialog": "ashleyRoom"
+    },
+    {
+      "id": "treatment_session",
+      "location": "treatment_room",
+      "conditions": [
+        { "type": "not", "condition": { "type": "flag", "flag": "sessionCompleted" } }
+      ],
+      "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
+      "animations": ["glow-pulse", "vignette-flicker"],
+      "dialog": "treatmentBegin"
+    },
+    {
+      "id": "treatment_debrief",
+      "location": "treatment_room",
+      "conditions": [
+        { "type": "not", "condition": { "type": "flag", "flag": "debriefComplete" } }
+      ],
+      "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
+      "animations": ["glow-pulse"],
+      "dialog": "debrief"
+    },
+    {
+      "id": "parents_unlocked",
+      "location": "parents_suite",
+      "conditions": [{ "type": "flag", "flag": "midGameUnlocked" }],
+      "background": "linear-gradient(180deg, #1f1318 0%, #0a0608 100%)",
+      "animations": ["vignette-flicker"],
+      "dialog": "parentsUnlocked"
+    },
+    {
+      "id": "parents_closed",
+      "location": "parents_suite",
+      "background": "linear-gradient(180deg, #1f1318 0%, #0a0608 100%)",
+      "animations": ["vignette-flicker", "dim"],
+      "dialog": "parentsClosed"
+    }
+  ],
   "dialogs": {
     "wrenOffer": {
       "id": "wrenOffer",
@@ -36,7 +152,10 @@
           "speaker": "Wren",
           "text": "Sit a moment. … How did you find Mrs. Whitfield this afternoon?",
           "choices": [
-            { "text": "Settled. A little brighter. She sat through the second hour without being prompted.", "next": "gallery" },
+            {
+              "text": "Settled. A little brighter. She sat through the second hour without being prompted.",
+              "next": "gallery"
+            },
             { "text": "Tense. She wouldn't meet me in the gallery.", "next": "gallery_alt" }
           ]
         },
@@ -44,7 +163,10 @@
           "speaker": "Wren",
           "text": "And in the gallery?",
           "choices": [
-            { "text": "She walked the length of it twice. Stopped in front of the small Bonnard. I think she was looking at the hands.", "next": "offer" },
+            {
+              "text": "She walked the length of it twice. Stopped in front of the small Bonnard. I think she was looking at the hands.",
+              "next": "offer"
+            },
             { "text": "She didn't go in.", "next": "offer" }
           ]
         },
@@ -57,8 +179,26 @@
           "speaker": "Wren",
           "text": "I think she's close enough that the next session could be the one that releases her, if it is well done. Ashley. I think you should run the next session as the operator. I will monitor.",
           "choices": [
-            { "text": "Yes. I can. I'd like to.", "actions": [{ "type": "narrate", "text": "He smiles — a private softness through the long horizon of his face." }], "next": "why" },
-            { "text": "I'd like to think about it.", "actions": [{ "type": "narrate", "text": "He nods once, the way he does when he has already accounted for the answer he was hoping for." }], "next": "why" }
+            {
+              "text": "Yes. I can. I'd like to.",
+              "actions": [
+                {
+                  "type": "narrate",
+                  "text": "He smiles — a private softness through the long horizon of his face."
+                }
+              ],
+              "next": "why"
+            },
+            {
+              "text": "I'd like to think about it.",
+              "actions": [
+                {
+                  "type": "narrate",
+                  "text": "He nods once, the way he does when he has already accounted for the answer he was hoping for."
+                }
+              ],
+              "next": "why"
+            }
           ]
         },
         "why": {
@@ -78,8 +218,14 @@
           "speaker": "Wren",
           "text": "Tell me what you will be looking for.",
           "choices": [
-            { "text": "The teacher. The figure she described in the second interview. Behind the curtain that won't quite open.", "next": "company" },
-            { "text": "The keyboard. If I can move her hands, I can move her.", "next": "wrong_target" },
+            {
+              "text": "The teacher. The figure she described in the second interview. Behind the curtain that won't quite open.",
+              "next": "company"
+            },
+            {
+              "text": "The keyboard. If I can move her hands, I can move her.",
+              "next": "wrong_target"
+            },
             { "text": "I would let the dream show me.", "next": "company" }
           ]
         },
@@ -100,7 +246,16 @@
           "text": "And when you are finished. The phrase.",
           "choices": [
             { "text": "The light in the conservatory.", "next": "rule" },
-            { "text": "I — remind me.", "actions": [{ "type": "narrate", "text": "He looks at me steadily, and waits, and then says it himself." }], "next": "rule_after_prompt" }
+            {
+              "text": "I — remind me.",
+              "actions": [
+                {
+                  "type": "narrate",
+                  "text": "He looks at me steadily, and waits, and then says it himself."
+                }
+              ],
+              "next": "rule_after_prompt"
+            }
           ]
         },
         "rule_after_prompt": {
@@ -112,7 +267,10 @@
           "speaker": "Wren",
           "text": "You will be safe. You will always be safe. Do you remember the rule?",
           "choices": [
-            { "text": "The operator cannot be harmed. The patient can. The weight is mine.", "next": "close" }
+            {
+              "text": "The operator cannot be harmed. The patient can. The weight is mine.",
+              "next": "close"
+            }
           ]
         },
         "close": {
@@ -123,10 +281,13 @@
               "text": "Goodnight.",
               "actions": [
                 { "type": "setFlag", "flag": "offerAccepted", "value": true },
-                { "type": "setPatientStatus", "patient": "whitfield", "status": "inResidence" },
+                {
+                  "type": "setPatientStatus",
+                  "patient": "whitfield",
+                  "status": "inResidence"
+                },
                 { "type": "endDialog" },
-                { "type": "narrate", "kind": "system", "text": "— The next afternoon. —" },
-                { "type": "goto", "scene": "mansion_first_floor" }
+                { "type": "narrate", "kind": "system", "text": "— The next afternoon. —" }
               ]
             }
           ]
@@ -141,13 +302,7 @@
           "speaker": "Ashley",
           "text": "Wren's study, empty now. The lamp is low. The room remembers him.",
           "choices": [
-            {
-              "text": "Step back to the landing.",
-              "actions": [
-                { "type": "endDialog" },
-                { "type": "goto", "scene": "mansion_first_floor" }
-              ]
-            }
+            { "text": "Step back to the landing.", "actions": [{ "type": "endDialog" }] }
           ]
         }
       }
@@ -163,7 +318,10 @@
             {
               "text": "Read the file again.",
               "actions": [
-                { "type": "narrate", "text": "I read it again, as Elias did not ask. The same five pages. The phrase, on the inside cover, in his hand: the light in the conservatory." },
+                {
+                  "type": "narrate",
+                  "text": "I read it again, as Elias did not ask. The same five pages. The phrase, on the inside cover, in his hand: the light in the conservatory."
+                },
                 { "type": "addItem", "item": "caseFile" },
                 { "type": "setFlag", "flag": "examinedFile", "value": true }
               ],
@@ -172,15 +330,15 @@
             {
               "text": "Sit at the window a while.",
               "actions": [
-                { "type": "narrate", "text": "The window faces the courtyard. The rain has not quite committed to falling. The minutes pass and the courtyard does not change." }
+                {
+                  "type": "narrate",
+                  "text": "The window faces the courtyard. The rain has not quite committed to falling. The minutes pass and the courtyard does not change."
+                }
               ]
             },
             {
               "text": "Step out to the landing.",
-              "actions": [
-                { "type": "endDialog" },
-                { "type": "goto", "scene": "mansion_first_floor" }
-              ]
+              "actions": [{ "type": "endDialog" }]
             }
           ]
         },
@@ -190,10 +348,7 @@
           "choices": [
             {
               "text": "Step out to the landing.",
-              "actions": [
-                { "type": "endDialog" },
-                { "type": "goto", "scene": "mansion_first_floor" }
-              ]
+              "actions": [{ "type": "endDialog" }]
             }
           ]
         }
@@ -210,21 +365,37 @@
             {
               "text": "Look at Catherine.",
               "actions": [
-                { "type": "narrate", "text": "Her hands are folded in her lap. The freeze hasn't reached them here." }
+                {
+                  "type": "narrate",
+                  "text": "Her hands are folded in her lap. The freeze hasn't reached them here."
+                }
               ]
             },
             {
               "text": "Look at the rig.",
               "actions": [
-                { "type": "narrate", "text": "Glass instruments. A thin amber line moving across a paper drum. Wren's hand rests on the dial." }
+                {
+                  "type": "narrate",
+                  "text": "Glass instruments. A thin amber line moving across a paper drum. Wren's hand rests on the dial."
+                }
               ]
             },
             {
               "text": "Sit in the operator's chair.",
               "visibleIf": { "type": "flag", "flag": "examinedFile" },
               "actions": [
-                { "type": "narrate", "kind": "system", "text": "You sit. Wren sets the timer. The room narrows to the lamp and his hands at the rig." },
-                { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "When you are ready." },
+                {
+                  "type": "narrate",
+                  "kind": "system",
+                  "text": "You sit. Wren sets the timer. The room narrows to the lamp and his hands at the rig."
+                },
+                {
+                  "type": "narrate",
+                  "speaker": "Wren",
+                  "kind": "dialog",
+                  "text": "When you are ready."
+                },
+                { "type": "setFlag", "flag": "sessionCompleted", "value": true },
                 { "type": "endDialog" },
                 { "type": "enterDream", "patient": "whitfield" }
               ]
@@ -233,17 +404,48 @@
               "text": "Sit in the operator's chair.",
               "visibleIf": { "type": "not", "condition": { "type": "flag", "flag": "examinedFile" } },
               "actions": [
-                { "type": "narrate", "text": "You hesitate. Wren glances at you over the rig." },
-                { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "Read the file again before we begin. It's still on the bedside table." }
+                {
+                  "type": "narrate",
+                  "text": "You hesitate. Wren glances at you over the rig."
+                },
+                {
+                  "type": "narrate",
+                  "speaker": "Wren",
+                  "kind": "dialog",
+                  "text": "Read the file again before we begin. It's still on the bedside table."
+                }
               ]
             },
             {
               "text": "Step back to the landing.",
-              "actions": [
-                { "type": "endDialog" },
-                { "type": "goto", "scene": "mansion_first_floor" }
-              ]
+              "actions": [{ "type": "endDialog" }]
             }
+          ]
+        }
+      }
+    },
+    "parentsClosed": {
+      "id": "parentsClosed",
+      "start": "open",
+      "nodes": {
+        "open": {
+          "speaker": "Ashley",
+          "text": "The handle turns and stops. There is a particular weight on the other side that you have learned to step around. — The parents' suite is closed to you.",
+          "choices": [
+            { "text": "Turn away.", "actions": [{ "type": "endDialog" }] }
+          ]
+        }
+      }
+    },
+    "parentsUnlocked": {
+      "id": "parentsUnlocked",
+      "start": "open",
+      "nodes": {
+        "open": {
+          "speaker": "Ashley",
+          "text": "The door is open now. — But not yet. Not in this slice.",
+          "choices": [
+            { "text": "Step back.", "actions": [{ "type": "endDialog" }] }
           ]
         }
       }
@@ -258,14 +460,26 @@
           "choices": [
             { "text": "I'm here for the session.", "next": "session" },
             { "text": "Tell me about this place.", "next": "place" },
-            { "text": "Who taught you to play?", "next": "teacher", "actions": [{ "type": "setFlag", "flag": "consideredTeacher", "value": true }] }
+            {
+              "text": "Who taught you to play?",
+              "next": "teacher",
+              "actions": [
+                { "type": "setFlag", "flag": "consideredTeacher", "value": true }
+              ]
+            }
           ]
         },
         "session": {
           "speaker": "Catherine",
           "text": "Session. — That word, in this hall. They are waiting on the other side of the curtain. They have always been waiting.",
           "choices": [
-            { "text": "Who taught you to play?", "next": "teacher", "actions": [{ "type": "setFlag", "flag": "consideredTeacher", "value": true }] },
+            {
+              "text": "Who taught you to play?",
+              "next": "teacher",
+              "actions": [
+                { "type": "setFlag", "flag": "consideredTeacher", "value": true }
+              ]
+            },
             { "text": "I don't have to ask anything. I can stay.", "next": "stay" }
           ]
         },
@@ -273,7 +487,13 @@
           "speaker": "Catherine",
           "text": "It is a hall the size of a railway station. The audience gathers without arriving. The keys will not let me down. — But the wings are deeper than the stage. You have noticed.",
           "choices": [
-            { "text": "Who taught you to play?", "next": "teacher", "actions": [{ "type": "setFlag", "flag": "consideredTeacher", "value": true }] },
+            {
+              "text": "Who taught you to play?",
+              "next": "teacher",
+              "actions": [
+                { "type": "setFlag", "flag": "consideredTeacher", "value": true }
+              ]
+            },
             { "text": "I'm not here to make you play.", "next": "stay" }
           ]
         },
@@ -281,7 +501,13 @@
           "speaker": "Catherine",
           "text": "You're a stubborn one. — Most figures here ask me to perform. You haven't.",
           "choices": [
-            { "text": "Who taught you to play?", "next": "teacher", "actions": [{ "type": "setFlag", "flag": "consideredTeacher", "value": true }] }
+            {
+              "text": "Who taught you to play?",
+              "next": "teacher",
+              "actions": [
+                { "type": "setFlag", "flag": "consideredTeacher", "value": true }
+              ]
+            }
           ]
         },
         "teacher": {
@@ -291,7 +517,11 @@
             {
               "text": "Then we'll walk it together.",
               "actions": [
-                { "type": "narrate", "text": "She does not answer. She turns toward the back of the wings, and a corridor is suddenly there that was not there a moment ago.", "kind": "narration" },
+                {
+                  "type": "narrate",
+                  "text": "She does not answer. She turns toward the back of the wings, and a corridor is suddenly there that was not there a moment ago.",
+                  "kind": "narration"
+                },
                 { "type": "showObject", "object": "wf_corridor_door" },
                 { "type": "endDialog" }
               ]
@@ -315,9 +545,14 @@
                   "type": "speakExitPhrase",
                   "phrase": "I should leave",
                   "expected": "the light in the conservatory",
-                  "wakeScene": "device_room_after",
+                  "wakeInteraction": "treatment_debrief",
                   "onWrong": [
-                    { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "Not that. The phrase we agreed on. Speak it." }
+                    {
+                      "type": "narrate",
+                      "speaker": "Wren",
+                      "kind": "dialog",
+                      "text": "Not that. The phrase we agreed on. Speak it."
+                    }
                   ]
                 }
               ]
@@ -329,9 +564,14 @@
                   "type": "speakExitPhrase",
                   "phrase": "Catherine, this is over.",
                   "expected": "the light in the conservatory",
-                  "wakeScene": "device_room_after",
+                  "wakeInteraction": "treatment_debrief",
                   "onWrong": [
-                    { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "She isn't the one who needs to hear that. The phrase. Speak it." }
+                    {
+                      "type": "narrate",
+                      "speaker": "Wren",
+                      "kind": "dialog",
+                      "text": "She isn't the one who needs to hear that. The phrase. Speak it."
+                    }
                   ]
                 }
               ]
@@ -344,7 +584,7 @@
                   "type": "speakExitPhrase",
                   "phrase": "the light in the conservatory",
                   "expected": "the light in the conservatory",
-                  "wakeScene": "device_room_after"
+                  "wakeInteraction": "treatment_debrief"
                 }
               ]
             }
@@ -359,16 +599,22 @@
         "open": {
           "speaker": "Wren",
           "text": "You're back. Take a moment.",
-          "choices": [
-            { "text": "I'm here.", "next": "ask" }
-          ]
+          "choices": [{ "text": "I'm here.", "next": "ask" }]
         },
         "ask": {
           "speaker": "Wren",
           "text": "Tell me what happened.",
           "choices": [
-            { "text": "I walked the corridor with her.", "visibleIf": { "type": "flag", "flag": "walkedCorridor" }, "next": "good" },
-            { "text": "I didn't reach the corridor.", "visibleIf": { "type": "not", "condition": { "type": "flag", "flag": "walkedCorridor" } }, "next": "bad" }
+            {
+              "text": "I walked the corridor with her.",
+              "visibleIf": { "type": "flag", "flag": "walkedCorridor" },
+              "next": "good"
+            },
+            {
+              "text": "I didn't reach the corridor.",
+              "visibleIf": { "type": "not", "condition": { "type": "flag", "flag": "walkedCorridor" } },
+              "next": "bad"
+            }
           ]
         },
         "good": {
@@ -378,11 +624,23 @@
             {
               "text": "(end of session)",
               "actions": [
-                { "type": "setPatientStatus", "patient": "whitfield", "status": "improving" },
-                { "type": "recordPatientNote", "patient": "whitfield", "note": "Walked the corridor with her." },
-                { "type": "narrate", "kind": "system", "text": "Mrs. Whitfield will sleep through the afternoon. She will be brighter at supper than she has been in fifteen months." },
-                { "type": "endDialog" },
-                { "type": "goto", "scene": "mansion_first_floor" }
+                {
+                  "type": "setPatientStatus",
+                  "patient": "whitfield",
+                  "status": "improving"
+                },
+                {
+                  "type": "recordPatientNote",
+                  "patient": "whitfield",
+                  "note": "Walked the corridor with her."
+                },
+                {
+                  "type": "narrate",
+                  "kind": "system",
+                  "text": "Mrs. Whitfield will sleep through the afternoon. She will be brighter at supper than she has been in fifteen months."
+                },
+                { "type": "setFlag", "flag": "debriefComplete", "value": true },
+                { "type": "endDialog" }
               ]
             }
           ]
@@ -394,10 +652,18 @@
             {
               "text": "I understand.",
               "actions": [
-                { "type": "setPatientStatus", "patient": "whitfield", "status": "unhelped" },
-                { "type": "recordPatientNote", "patient": "whitfield", "note": "Session ended without reaching the corridor." },
-                { "type": "endDialog" },
-                { "type": "goto", "scene": "mansion_first_floor" }
+                {
+                  "type": "setPatientStatus",
+                  "patient": "whitfield",
+                  "status": "unhelped"
+                },
+                {
+                  "type": "recordPatientNote",
+                  "patient": "whitfield",
+                  "note": "Session ended without reaching the corridor."
+                },
+                { "type": "setFlag", "flag": "debriefComplete", "value": true },
+                { "type": "endDialog" }
               ]
             }
           ]
@@ -406,91 +672,18 @@
     }
   },
   "scenes": {
-    "study": {
-      "name": "Wren's Study",
-      "kind": "location",
-      "background": "linear-gradient(180deg, #2a1d12 0%, #140e0a 100%)",
-      "onEnter": [
-        {
-          "type": "if",
-          "condition": { "type": "flag", "flag": "offerAccepted" },
-          "then": [
-            { "type": "startDialog", "dialog": "studyEmpty" }
-          ],
-          "else": [
-            { "type": "narrate", "kind": "system", "text": "Eight in the evening. Wren has set a second chair across from his own." },
-            { "type": "startDialog", "dialog": "wrenOffer" }
-          ]
-        }
-      ]
-    },
-    "mansion_first_floor": {
-      "name": "First Floor — The Wren House",
-      "kind": "floorplan",
-      "background": "linear-gradient(180deg, #1a1822 0%, #100e18 100%)",
-      "description": "The first floor of the house. You can move between rooms.",
-      "objects": [
-        {
-          "id": "ff_study",
-          "name": "Wren's Study",
-          "rect": { "x": 8, "y": 10, "w": 38, "h": 35 },
-          "triggers": { "onClick": [{ "type": "goto", "scene": "study" }] }
-        },
-        {
-          "id": "ff_parents",
-          "name": "Parents' Suite (closed)",
-          "rect": { "x": 54, "y": 10, "w": 38, "h": 35 },
-          "triggers": {
-            "onClick": [
-              {
-                "type": "if",
-                "condition": { "type": "flag", "flag": "midGameUnlocked" },
-                "then": [{ "type": "narrate", "text": "The door is open now. — But not yet. Not in this slice." }],
-                "else": [
-                  { "type": "narrate", "text": "The handle turns and stops. There is a particular weight on the other side that you have learned to step around." },
-                  { "type": "narrate", "kind": "system", "text": "The parents' suite is closed to you." }
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "id": "ff_ashley",
-          "name": "Ashley's Room",
-          "rect": { "x": 8, "y": 55, "w": 38, "h": 35 },
-          "triggers": { "onClick": [{ "type": "goto", "scene": "ashley_room" }] }
-        },
-        {
-          "id": "ff_treatment",
-          "name": "Treatment Room",
-          "rect": { "x": 54, "y": 55, "w": 38, "h": 35 },
-          "triggers": { "onClick": [{ "type": "goto", "scene": "device_room" }] }
-        }
-      ]
-    },
-    "ashley_room": {
-      "name": "Ashley's Room",
-      "kind": "location",
-      "background": "linear-gradient(180deg, #1f1815 0%, #100c0a 100%)",
-      "onEnter": [
-        { "type": "startDialog", "dialog": "ashleyRoom" }
-      ]
-    },
-    "device_room": {
-      "name": "The Treatment Room",
-      "kind": "location",
-      "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
-      "onEnter": [
-        { "type": "startDialog", "dialog": "treatmentBegin" }
-      ]
-    },
     "whitfield_stage": {
       "name": "Concert Hall — Stage",
       "kind": "dream",
       "background": "linear-gradient(180deg, #3a1014 0%, #100406 100%)",
       "description": "A concert hall the size of a railway station. The audience gathers without arriving. The piano is centre stage and the keys will not let her down.",
       "onEnter": [
-        { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "(in your ear) You're in. Take your time. She isn't here yet." }
+        {
+          "type": "narrate",
+          "speaker": "Wren",
+          "kind": "dialog",
+          "text": "(in your ear) You're in. Take your time. She isn't here yet."
+        }
       ],
       "objects": [
         {
@@ -500,8 +693,16 @@
           "color": "rgba(0, 0, 0, 0.35)",
           "triggers": {
             "onClick": [
-              { "type": "narrate", "text": "The keys are perfectly set out and perfectly inert. They are what she lets herself be afraid of. They are not the work." },
-              { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "Not the keyboard. You know this." }
+              {
+                "type": "narrate",
+                "text": "The keys are perfectly set out and perfectly inert. They are what she lets herself be afraid of. They are not the work."
+              },
+              {
+                "type": "narrate",
+                "speaker": "Wren",
+                "kind": "dialog",
+                "text": "Not the keyboard. You know this."
+              }
             ]
           }
         },
@@ -512,7 +713,10 @@
           "color": "rgba(50, 30, 30, 0.20)",
           "triggers": {
             "onClick": [
-              { "type": "narrate", "text": "They are present without being any number you can count. They are waiting the way a held breath waits." }
+              {
+                "type": "narrate",
+                "text": "They are present without being any number you can count. They are waiting the way a held breath waits."
+              }
             ]
           }
         },
@@ -522,9 +726,7 @@
           "rect": { "x": 0, "y": 30, "w": 14, "h": 50 },
           "color": "rgba(0, 0, 0, 0.4)",
           "triggers": {
-            "onClick": [
-              { "type": "goto", "scene": "whitfield_wings" }
-            ]
+            "onClick": [{ "type": "goto", "scene": "whitfield_wings" }]
           }
         }
       ]
@@ -542,7 +744,10 @@
           "color": "rgba(80, 30, 30, 0.30)",
           "triggers": {
             "onClick": [
-              { "type": "narrate", "text": "The curtain holds. It does not so much resist your hand as decline to register it." }
+              {
+                "type": "narrate",
+                "text": "The curtain holds. It does not so much resist your hand as decline to register it."
+              }
             ]
           }
         },
@@ -579,9 +784,18 @@
       "background": "linear-gradient(180deg, #1a1530 0%, #080612 100%)",
       "description": "The corridor is narrow and quiet. Neither of you speaks for a long time. She walks. You walk. At the far end is a small room she could not leave. You do not go in. You stand at the door with her, and you do not flinch.",
       "onEnter": [
-        { "type": "narrate", "kind": "system", "text": "She shows you, as she has not shown anyone, what was said in that room. You do not perform on it. You witness it." },
+        {
+          "type": "narrate",
+          "kind": "system",
+          "text": "She shows you, as she has not shown anyone, what was said in that room. You do not perform on it. You witness it."
+        },
         { "type": "setFlag", "flag": "walkedCorridor", "value": true },
-        { "type": "narrate", "speaker": "Wren", "kind": "dialog", "text": "(in your ear) The work is done. When you're ready." }
+        {
+          "type": "narrate",
+          "speaker": "Wren",
+          "kind": "dialog",
+          "text": "(in your ear) The work is done. When you're ready."
+        }
       ],
       "objects": [
         {
@@ -593,14 +807,6 @@
             "onClick": [{ "type": "startDialog", "dialog": "whitfieldExit" }]
           }
         }
-      ]
-    },
-    "device_room_after": {
-      "name": "The Treatment Room",
-      "kind": "location",
-      "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
-      "onEnter": [
-        { "type": "startDialog", "dialog": "debrief" }
       ]
     }
   }

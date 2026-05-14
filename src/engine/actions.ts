@@ -1,6 +1,26 @@
 import type { Action, Condition, PatientStatus } from '../types';
 import { evaluateCondition } from './conditions';
+import type { GameEngine } from './engine';
 import { actionRegistry, actionValidatorRegistry, type ActionContext } from './registry';
+
+async function wakeTo(
+  engine: GameEngine,
+  target: { interaction?: unknown; scene?: unknown },
+): Promise<void> {
+  if (typeof target.interaction === 'string' && target.interaction) {
+    await engine.enterInteraction(target.interaction);
+    return;
+  }
+  if (typeof target.scene === 'string' && target.scene) {
+    await engine.enterScene(target.scene);
+    return;
+  }
+  if (engine.adventure.startScene) {
+    await engine.enterScene(engine.adventure.startScene);
+  } else if (engine.adventure.startSite) {
+    await engine.enterSite(engine.adventure.startSite);
+  }
+}
 
 const VALID_PATIENT_STATUSES: PatientStatus[] = [
   'pending',
@@ -38,9 +58,24 @@ export function registerBuiltInActions(): void {
     });
   });
 
-  // { type: "goto", scene: "interior" }
+  // { type: "goto", scene: "interior" } — navigate to a (dream/legacy hub) scene
   actionRegistry.register('goto', async (action, { engine }) => {
     await engine.enterScene(String(action.scene));
+  });
+
+  // { type: "gotoSite", site: "mansion_first_floor" } — switch mansion site
+  actionRegistry.register('gotoSite', async (action, { engine }) => {
+    await engine.enterSite(String(action.site));
+  });
+
+  // { type: "enterInteraction", interaction: "study_offer" } — start a mansion interaction
+  actionRegistry.register('enterInteraction', async (action, { engine }) => {
+    await engine.enterInteraction(String(action.interaction));
+  });
+
+  // { type: "exitInteraction" } — end current mansion interaction
+  actionRegistry.register('exitInteraction', async (_action, { engine }) => {
+    await engine.exitInteraction();
   });
 
   // { type: "setFlag", flag: "doorUnlocked", value: true }
@@ -159,16 +194,17 @@ export function registerBuiltInActions(): void {
     await engine.enterScene(def.dreamScene);
   });
 
-  // { type: "wake", scene: "deviceRoom" }
-  // Exits the current dream: clears activePatientId, navigates to the wake scene.
+  // { type: "wake", interaction?: "treatment_debrief", scene?: "deviceRoom" }
+  // Exits the current dream: clears activePatientId, navigates to either a
+  // mansion interaction (preferred) or a scene (legacy / non-mansion games).
   actionRegistry.register('wake', async (action, { engine }) => {
     engine.state.activePatientId = null;
-    const target = (action.scene as string | undefined) ?? engine.adventure.startScene;
-    await engine.enterScene(target);
+    await wakeTo(engine, { interaction: action.interaction, scene: action.scene });
   });
 
   // { type: "speakExitPhrase", phrase: "the light in the conservatory",
-  //   expected: "the light in the conservatory", wakeScene: "deviceRoom",
+  //   expected: "the light in the conservatory",
+  //   wakeInteraction?: "treatment_debrief", wakeScene?: "deviceRoom",
   //   onWrong?: [actions] }
   // Speaking the prearranged phrase wakes; anything else runs onWrong.
   actionRegistry.register('speakExitPhrase', async (action, ctx) => {
@@ -185,8 +221,10 @@ export function registerBuiltInActions(): void {
     });
     if (phrase && phrase === expected) {
       ctx.engine.state.activePatientId = null;
-      const target = (action.wakeScene as string | undefined) ?? ctx.engine.adventure.startScene;
-      await ctx.engine.enterScene(target);
+      await wakeTo(ctx.engine, {
+        interaction: action.wakeInteraction,
+        scene: action.wakeScene,
+      });
     } else if (action.onWrong) {
       await runActions(action.onWrong as Action[], ctx);
     }
@@ -208,6 +246,9 @@ function requireArray(action: Action, key: string): string[] {
 function registerBuiltInActionValidators(): void {
   actionValidatorRegistry.register('narrate', (a) => requireString(a, 'text'));
   actionValidatorRegistry.register('goto', (a) => requireString(a, 'scene'));
+  actionValidatorRegistry.register('gotoSite', (a) => requireString(a, 'site'));
+  actionValidatorRegistry.register('enterInteraction', (a) => requireString(a, 'interaction'));
+  actionValidatorRegistry.register('exitInteraction', () => []);
   actionValidatorRegistry.register('setFlag', (a) => requireString(a, 'flag'));
   actionValidatorRegistry.register('addItem', (a) => requireString(a, 'item'));
   actionValidatorRegistry.register('removeItem', (a) => requireString(a, 'item'));
@@ -255,11 +296,16 @@ function registerBuiltInActionValidators(): void {
     ...requireString(a, 'note'),
   ]);
   actionValidatorRegistry.register('enterDream', (a) => requireString(a, 'patient'));
-  actionValidatorRegistry.register('wake', (a) =>
-    a.scene === undefined || typeof a.scene === 'string'
-      ? []
-      : [`"wake".scene must be a string when provided`],
-  );
+  actionValidatorRegistry.register('wake', (a) => {
+    const errs: string[] = [];
+    if (a.scene !== undefined && typeof a.scene !== 'string') {
+      errs.push(`"wake".scene must be a string when provided`);
+    }
+    if (a.interaction !== undefined && typeof a.interaction !== 'string') {
+      errs.push(`"wake".interaction must be a string when provided`);
+    }
+    return errs;
+  });
   actionValidatorRegistry.register('speakExitPhrase', (a) => {
     const errs: string[] = [];
     if (typeof a.expected !== 'string' || !a.expected) {
@@ -267,6 +313,12 @@ function registerBuiltInActionValidators(): void {
     }
     if (a.phrase !== undefined && typeof a.phrase !== 'string') {
       errs.push(`"speakExitPhrase".phrase must be a string when provided`);
+    }
+    if (a.wakeScene !== undefined && typeof a.wakeScene !== 'string') {
+      errs.push(`"speakExitPhrase".wakeScene must be a string when provided`);
+    }
+    if (a.wakeInteraction !== undefined && typeof a.wakeInteraction !== 'string') {
+      errs.push(`"speakExitPhrase".wakeInteraction must be a string when provided`);
     }
     if (a.onWrong !== undefined && !Array.isArray(a.onWrong)) {
       errs.push(`"speakExitPhrase".onWrong must be an array of actions`);
