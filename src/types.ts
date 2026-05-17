@@ -74,11 +74,27 @@ export interface FlagDef {
   description?: string;
 }
 
-/** A clickable region on a site's floor plan. Either opens an interaction
- *  (when no `target`) or transitions to another site (when `target` is set). */
+/** Item catalog entry (inventory item). */
+export interface ItemDef {
+  name: string;
+  description?: string;
+  image?: string;
+}
+
+/** Marker shown at a location. Defaults to "standard" when omitted; the four
+ *  directional values render arrow icons useful for transitions. */
+export type SiteLocationIcon = 'standard' | 'left' | 'up' | 'down' | 'right';
+
+/** A clickable point on a site's floor plan. Either opens an interaction
+ *  (when no `target`) or transitions to another site (when `target` is set).
+ *  Coordinates are percentages of the viewport; the location icon is rendered
+ *  centered at (x, y). */
 export interface SiteLocation {
   name: string;
-  rect: Rect;
+  x: number;
+  y: number;
+  /** Marker variant. Defaults to "standard". */
+  icon?: SiteLocationIcon;
   /** If set, clicking transitions to this site (no interaction lookup). */
   target?: string;
 }
@@ -164,7 +180,6 @@ export interface Dialog {
 
 export interface Adventure {
   title: string;
-  author?: string;
   /** Required for dream-only / hub adventures. Optional for mansion adventures
    *  that boot via `startSite` / `startInteraction`. */
   startScene?: string;
@@ -183,7 +198,7 @@ export interface Adventure {
     inventory?: string[];
   };
   /** Item catalog: id -> display info. */
-  items?: Record<string, { name: string; description?: string; image?: string }>;
+  items?: Record<string, ItemDef>;
   /** Dream and legacy hub scenes. Mansion rooms live in `sites`. */
   scenes?: Record<string, Scene>;
   /** Mansion sites (floor plans). */
@@ -223,4 +238,62 @@ export interface NarrationEntry {
   kind: 'narration' | 'dialog' | 'system';
   text: string;
   speaker?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Authoring config types
+//
+// The engine consumes a single `Adventure` at runtime, but authoring is split
+// across files that evolve independently:
+//
+//   - `main.json` is a `MansionConfig` — the hub: sites, interactions, mansion
+//     dialogs, patient registry. Explicitly NO scenes, NO items, NO inventory.
+//   - `adventures/<patient>.json` is a `DreamConfig` — the dream world: scenes,
+//     dream-only dialogs, optional items and initial inventory. Explicitly no
+//     sites/interactions/patients/flags (those are mansion concerns).
+//
+// `loadMainAdventure()` in `src/config/index.ts` validates and merges these
+// into a single `Adventure` the engine can consume. Keeping the file-level
+// types separate lets each schema evolve independently and lets the validator
+// reject "wrong field in wrong file" mistakes at load time.
+// ---------------------------------------------------------------------------
+
+/** Schema for the mansion-side config file (main.json). */
+export interface MansionConfig {
+  title: string;
+  /** Site to land on at new game. Required. */
+  startSite: string;
+  /** Optional opening interaction that auto-plays before the floor plan shows. */
+  startInteraction?: string;
+  /** Declared flags with defaults and descriptions. */
+  flags?: Record<string, FlagDef>;
+  /** Non-inventory initial state (flag overrides). Inventory is a dream-only concept. */
+  initialState?: {
+    flags?: Record<string, unknown>;
+  };
+  /** Patients introduced by this adventure. Each patient may have a matching
+   *  `adventures/<patientId>.json` dream file. */
+  patients?: Record<PatientId, PatientDef>;
+  /** Mansion sites (floor plans). */
+  sites: Record<string, Site>;
+  /** Mansion interactions. Ordered: first qualifying interaction at a location wins. */
+  interactions?: Interaction[];
+  /** Mansion-side dialogs (started from interactions). Dream-only dialogs live
+   *  in the dream files. */
+  dialogs?: Record<string, Dialog>;
+}
+
+/** Schema for a per-dream config file (`src/config/adventures/<patientId>.json`). */
+export interface DreamConfig {
+  /** The dream world's rooms. Required. */
+  scenes: Record<string, Scene>;
+  /** Dream-only dialogs (started from scene objects or scene `onEnter` lists). */
+  dialogs?: Record<string, Dialog>;
+  /** Items available within this dream. */
+  items?: Record<string, ItemDef>;
+  /** Inventory the operator starts the session with. Reserved for forthcoming
+   *  dream-scoped inventory handling; declaring it is harmless today. */
+  initialState?: {
+    inventory?: string[];
+  };
 }

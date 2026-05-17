@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { GameEngine } from '../../engine';
 import { SCENE_HEIGHT, SCENE_WIDTH } from '../../engine/layout';
-import type { SiteLocation } from '../../types';
+import { isUrlLike, resolveAssetUrl } from '../../engine/assets';
+import type { SiteLocation, SiteLocationIcon } from '../../types';
 import NarrationPanel from '../NarrationPanel.vue';
 
 const props = defineProps<{
@@ -14,21 +15,47 @@ const locations = computed(() => props.engine.visibleLocations.value);
 
 const backgroundStyle = computed(() => {
   const bg = site.value?.background;
-  return bg ? { background: bg } : { background: '#1a1722' };
+  if (!bg) return { background: '#1a1722' };
+  if (!isUrlLike(bg)) return { background: bg };
+  return {
+    backgroundImage: `url(${resolveAssetUrl(bg)})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  };
 });
 
-function rectStyle(loc: SiteLocation) {
-  const r = loc.rect;
+const iconUrls: Record<SiteLocationIcon, string> = {
+  standard: resolveAssetUrl('main/location-icon.png'),
+  left: resolveAssetUrl('main/travel-icon-left.png'),
+  up: resolveAssetUrl('main/travel-icon-up.png'),
+  down: resolveAssetUrl('main/travel-icon-down.png'),
+  right: resolveAssetUrl('main/travel-icon-right.png'),
+};
+
+function pointStyle(loc: SiteLocation) {
   return {
-    left: `${r.x}%`,
-    top: `${r.y}%`,
-    width: `${r.w}%`,
-    height: `${r.h}%`,
+    left: `${loc.x}%`,
+    top: `${loc.y}%`,
   };
 }
 
-function click(id: string) {
-  void props.engine.clickLocation(id);
+function iconFor(loc: SiteLocation): string {
+  return iconUrls[loc.icon ?? 'standard'];
+}
+
+const FADE_MS = 300;
+const isFading = ref(false);
+
+async function click(id: string) {
+  const loc = site.value?.locations?.[id];
+  if (loc?.target) {
+    isFading.value = true;
+    await new Promise<void>((resolve) => setTimeout(resolve, FADE_MS));
+    await props.engine.clickLocation(id);
+    isFading.value = false;
+  } else {
+    void props.engine.clickLocation(id);
+  }
 }
 </script>
 
@@ -41,16 +68,18 @@ function click(id: string) {
           v-for="entry in locations"
           :key="entry.id"
           type="button"
-          class="room"
+          class="location"
           :class="{ 'is-transition': !!entry.location.target }"
-          :style="rectStyle(entry.location)"
+          :style="pointStyle(entry.location)"
           :aria-label="entry.location.name"
           @click="click(entry.id)"
         >
-          <span class="room-name">{{ entry.location.name }}</span>
+          <span class="location-tooltip">{{ entry.location.name }}</span>
+          <img class="location-icon" :src="iconFor(entry.location)" alt="" aria-hidden="true" />
         </button>
       </div>
       <div class="map-title">{{ site?.name }}</div>
+      <div class="fade-overlay" :class="{ active: isFading }" aria-hidden="true" />
     </div>
     <NarrationPanel :engine="engine" />
   </div>
@@ -85,45 +114,57 @@ function click(id: string) {
   inset: 0;
 }
 
-.room {
+.location {
   position: absolute;
-  background: rgba(120, 100, 80, 0.1);
-  border: 1px dashed rgba(220, 200, 160, 0.45);
-  color: var(--ink);
-  font: inherit;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  background: transparent;
+  border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: 0.5rem;
-  transition:
-    background 120ms,
-    border-color 120ms,
-    color 120ms;
+  transition: filter 120ms, transform 120ms;
 }
 
-.room:hover {
-  background: rgba(255, 200, 120, 0.15);
-  border-color: var(--hot);
-  color: var(--hot);
+.location-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 
-.room.is-transition {
-  background: rgba(120, 180, 220, 0.08);
-  border-style: dotted;
+.location:hover,
+.location:focus-visible {
+  filter: drop-shadow(0 0 6px rgba(240, 192, 96, 0.6));
+  transform: translate(-50%, -50%) scale(1.08);
+  outline: none;
 }
 
-.room.is-transition:hover {
-  background: rgba(160, 220, 255, 0.15);
-  border-color: #9dc8ff;
-  color: #9dc8ff;
-}
-
-.room-name {
-  font-size: 0.9rem;
-  letter-spacing: 0.08em;
+.location-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.78);
+  color: var(--ink);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--accent-dim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms;
+}
+
+.location:hover .location-tooltip,
+.location:focus-visible .location-tooltip {
+  opacity: 1;
 }
 
 .map-title {
@@ -141,5 +182,20 @@ function click(id: string) {
 
 .site > :deep(.narration) {
   height: 200px;
+}
+
+.fade-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+  z-index: 10;
+}
+
+.fade-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
 }
 </style>

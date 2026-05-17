@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { GameEngine } from '../engine';
 
 const props = defineProps<{
@@ -12,12 +12,20 @@ const inDialog = computed(() => props.engine.state.dialogState !== null);
 
 const scroller = ref<HTMLElement | null>(null);
 
-watch([() => entries.value.length, () => choices.value.length], async () => {
+async function scrollToBottom() {
   await nextTick();
   if (scroller.value) {
     scroller.value.scrollTop = scroller.value.scrollHeight;
   }
-});
+}
+
+// Scroll on initial mount (covers transitions: each mansion/site/interaction/dream
+// switch remounts the panel with entries already populated, so a fresh mount must
+// jump to the bottom rather than relying on the next length change).
+onMounted(scrollToBottom);
+
+// Scroll whenever new narration or choices appear.
+watch([() => entries.value.length, () => choices.value.length], scrollToBottom);
 
 function pick(index: number) {
   void props.engine.chooseDialogOption(index);

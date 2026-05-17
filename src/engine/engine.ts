@@ -376,23 +376,28 @@ function pickInteraction(
 /** Walks the site graph to decide which locations on the current site should
  *  render. Hidden when:
  *    - non-transition with no qualifying interaction
- *    - transition whose target site has no visible locations of its own
- *      (except: transitions to `startSite` are always shown). */
+ *    - transition whose target site (and everywhere it leads via further
+ *      transitions) has no currently-qualifying interaction. Back-links don't
+ *      count as "content" — only real interactions do.
+ *  Exception: a transition back to `startSite` is always shown when the player
+ *  is not already on `startSite`, so the player can never become stranded. */
 function computeVisibleLocations(
   adventure: Adventure,
   state: GameState,
   site: Site,
 ): Array<{ id: string; location: SiteLocation }> {
+  const startSite = adventure.startSite;
+  const currentSiteId = state.currentSiteId;
   const seen = new Set<string>();
-  const hasVisibleLocations = (siteId: string): boolean => {
+
+  const hasReachableInteraction = (siteId: string): boolean => {
     if (seen.has(siteId)) return false;
     seen.add(siteId);
     const s = adventure.sites?.[siteId];
     if (!s) return false;
     for (const [locId, loc] of Object.entries(s.locations)) {
       if (loc.target) {
-        if (loc.target === adventure.startSite) return true;
-        if (hasVisibleLocations(loc.target)) return true;
+        if (hasReachableInteraction(loc.target)) return true;
       } else {
         if (pickInteraction(adventure, state, locId)) return true;
       }
@@ -403,12 +408,18 @@ function computeVisibleLocations(
   const result: Array<{ id: string; location: SiteLocation }> = [];
   for (const [id, location] of Object.entries(site.locations)) {
     if (location.target) {
-      if (location.target === adventure.startSite) {
+      // Safety net: from any non-start site, a transition home is always shown.
+      if (location.target === startSite && currentSiteId !== startSite) {
         result.push({ id, location });
         continue;
       }
+      // Otherwise the target site must have a currently-qualifying interaction
+      // somewhere in its reachable graph. Seeding `seen` with the current site
+      // prevents back-links from cycling through it and falsely counting our
+      // own interactions toward the target's "has content" verdict.
       seen.clear();
-      if (hasVisibleLocations(location.target)) {
+      if (currentSiteId) seen.add(currentSiteId);
+      if (hasReachableInteraction(location.target)) {
         result.push({ id, location });
       }
     } else {

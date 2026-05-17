@@ -18,11 +18,12 @@ function baseAdventure(): Adventure {
       first_floor: {
         name: 'First Floor',
         locations: {
-          study: { name: 'Study', rect: { x: 0, y: 0, w: 30, h: 30 } },
-          bedroom: { name: 'Bedroom', rect: { x: 50, y: 0, w: 30, h: 30 } },
+          study: { name: 'Study', x: 15, y: 15 },
+          bedroom: { name: 'Bedroom', x: 65, y: 15 },
           stairs_up: {
             name: 'Stairs up',
-            rect: { x: 0, y: 80, w: 20, h: 20 },
+            x: 10,
+            y: 90,
             target: 'second_floor',
           },
         },
@@ -30,10 +31,11 @@ function baseAdventure(): Adventure {
       second_floor: {
         name: 'Second Floor',
         locations: {
-          attic: { name: 'Attic', rect: { x: 0, y: 0, w: 30, h: 30 } },
+          attic: { name: 'Attic', x: 15, y: 15 },
           stairs_down: {
             name: 'Stairs down',
-            rect: { x: 0, y: 80, w: 20, h: 20 },
+            x: 10,
+            y: 90,
             target: 'first_floor',
           },
         },
@@ -153,17 +155,24 @@ describe('mansion sites & interactions', () => {
     expect(ids).not.toContain('bedroom');
   });
 
-  it('hides transition locations whose target site has no visible content', async () => {
+  it('hides transition locations whose target site has no qualifying interaction', async () => {
     const adv = baseAdventure();
     const engine = new GameEngine(adv);
     await engine.start();
-    // second_floor only has atticVisit gated on offerDone; from first_floor,
-    // stairs_up should be hidden because second_floor has nothing visible
-    // (its only non-transition location is hidden, and its only other
-    // location is a transition back to first_floor which IS the start).
-    // But: transitions back to start are always shown — so second_floor DOES
-    // have a "visible" location (stairs_down). Stairs_up should therefore be
-    // visible.
+    // second_floor: attic is gated on offerDone (not set), stairs_down is just
+    // a back-link to first_floor. Back-links do not count as "content", so
+    // from first_floor the second_floor entrance must be hidden — there is
+    // nothing to do over there yet.
+    expect(engine.visibleLocations.value.map((e) => e.id)).not.toContain('stairs_up');
+  });
+
+  it('shows a transition once the target site has a qualifying interaction', async () => {
+    const adv = baseAdventure();
+    const engine = new GameEngine(adv);
+    await engine.start();
+    // Flip the gate so atticVisit qualifies; now second_floor has real content
+    // and the stairs_up entrance from first_floor should appear.
+    engine.state.flags.offerDone = true;
     expect(engine.visibleLocations.value.map((e) => e.id)).toContain('stairs_up');
   });
 

@@ -83,14 +83,26 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
         locationIds.add(locId);
       }
       if (!loc.name) errors.push({ path: `${locPath}.name`, message: 'name is required' });
-      if (!loc.rect || typeof loc.rect !== 'object') {
-        errors.push({ path: `${locPath}.rect`, message: 'rect is required' });
+      if (typeof loc.x !== 'number' || typeof loc.y !== 'number') {
+        errors.push({ path: locPath, message: 'x and y are required (numbers)' });
       }
-      if (loc.target && !sites[loc.target]) {
+      if (
+        loc.icon !== undefined &&
+        !['standard', 'left', 'up', 'down', 'right'].includes(loc.icon)
+      ) {
         errors.push({
-          path: `${locPath}.target`,
-          message: `target site "${loc.target}" is not defined`,
+          path: `${locPath}.icon`,
+          message: `icon must be one of "standard", "left", "up", "down", "right" (got "${loc.icon}")`,
         });
+      }
+      // Missing target sites are not a hard error: the runtime hides locations
+      // that point at non-existent or unreachable sites (see computeVisibleLocations
+      // in engine.ts). Warn so typos still surface at load-time, but let it load.
+      if (loc.target && !sites[loc.target]) {
+        console.warn(
+          `[adventure-engine] ${locPath}.target: site "${loc.target}" is not defined; ` +
+            `the location icon will be hidden at runtime.`,
+        );
       }
     }
   }
@@ -272,4 +284,97 @@ function walkCondition(
 
 export function formatValidationErrors(errors: AdventureValidationError[]): string {
   return errors.map((e) => `  ${e.path}: ${e.message}`).join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Per-file structural validators.
+//
+// These run BEFORE the loader merges files into one Adventure. They check the
+// SHAPE of each file — what's required, what's forbidden — so authors get a
+// clear, file-specific error when the wrong kind of content ends up in the
+// wrong file. Cross-cutting checks (reference resolution, action/condition
+// payloads, etc.) still happen against the merged result via
+// `validateAdventure`.
+// ---------------------------------------------------------------------------
+
+const MANSION_FORBIDDEN: ReadonlyArray<readonly [string, string]> = [
+  ['scenes', 'scenes belong in dream files (src/config/adventures/<patient>.json)'],
+  ['items', 'items belong in dream files; the mansion has no inventory'],
+  ['startScene', 'startScene is not used in mansion configs (use startSite)'],
+];
+
+const DREAM_FORBIDDEN: ReadonlyArray<readonly [string, string]> = [
+  ['title', 'title belongs in main.json'],
+  ['startSite', 'startSite belongs in main.json'],
+  ['startScene', 'startScene belongs in main.json'],
+  ['startInteraction', 'startInteraction belongs in main.json'],
+  ['sites', 'sites belong in main.json'],
+  ['interactions', 'interactions belong in main.json'],
+  ['patients', 'patients belong in main.json'],
+  ['flags', 'flags belong in main.json'],
+];
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+/**
+ * Validate a mansion config (main.json) for structural shape only. Rejects
+ * fields that belong in a dream file, surfaces missing required fields.
+ * Does not walk actions / conditions — that happens against the merged
+ * Adventure in `validateAdventure`.
+ */
+export function validateMansionConfig(config: unknown): AdventureValidationError[] {
+  const errors: AdventureValidationError[] = [];
+  if (!isPlainObject(config)) {
+    errors.push({ path: '', message: 'mansion config must be an object' });
+    return errors;
+  }
+  if (typeof config.title !== 'string' || !config.title) {
+    errors.push({ path: 'title', message: 'title is required (string)' });
+  }
+  if (typeof config.startSite !== 'string' || !config.startSite) {
+    errors.push({ path: 'startSite', message: 'startSite is required (string)' });
+  }
+  if (!isPlainObject(config.sites) || Object.keys(config.sites).length === 0) {
+    errors.push({ path: 'sites', message: 'sites is required (non-empty object)' });
+  }
+  for (const [field, reason] of MANSION_FORBIDDEN) {
+    if (field in config) errors.push({ path: field, message: reason });
+  }
+  if (isPlainObject(config.initialState) && 'inventory' in config.initialState) {
+    errors.push({
+      path: 'initialState.inventory',
+      message: 'inventory belongs in dream files; the mansion has no inventory',
+    });
+  }
+  return errors;
+}
+
+/**
+ * Validate a dream config (src/config/adventures/<patientId>.json) for
+ * structural shape only. Requires scenes; rejects fields that belong in
+ * main.json. Errors are prefixed with the dream id so the file source is
+ * legible in the merged error list.
+ */
+export function validateDreamConfig(
+  dreamId: string,
+  config: unknown,
+): AdventureValidationError[] {
+  const errors: AdventureValidationError[] = [];
+  const prefix = `dreams.${dreamId}`;
+  if (!isPlainObject(config)) {
+    errors.push({ path: prefix, message: 'dream config must be an object' });
+    return errors;
+  }
+  if (!isPlainObject(config.scenes) || Object.keys(config.scenes).length === 0) {
+    errors.push({
+      path: `${prefix}.scenes`,
+      message: 'scenes is required (non-empty object)',
+    });
+  }
+  for (const [field, reason] of DREAM_FORBIDDEN) {
+    if (field in config) errors.push({ path: `${prefix}.${field}`, message: reason });
+  }
+  return errors;
 }

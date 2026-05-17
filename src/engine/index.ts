@@ -17,6 +17,8 @@ export { runActions } from './actions';
 export { evaluateCondition } from './conditions';
 export {
   validateAdventure,
+  validateMansionConfig,
+  validateDreamConfig,
   formatValidationErrors,
   type AdventureValidationError,
 } from './validate';

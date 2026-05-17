@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { mainAdventure, adventureCatalog, type AdventureCatalogEntry } from '../adventures';
+import { mainAdventure, adventureCatalog, type AdventureCatalogEntry } from '../config';
 import type { Adventure } from '../types';
 import {
   ensureBuiltInsRegistered,

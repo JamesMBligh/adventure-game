@@ -1,6 +1,5 @@
 {
   "title": "The Cabin in the Clearing",
-  "author": "Sample Adventure",
   "startScene": "clearing",
   "initialState": {
     "flags": {},

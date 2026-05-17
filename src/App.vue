@@ -3,7 +3,7 @@ import { ref, shallowRef } from 'vue';
 import type { Adventure } from './types';
 import StartPage from './components/StartPage.vue';
 import AdventureGame from './components/AdventureGame.vue';
-import type { AdventureCatalogEntry } from './adventures';
+import type { AdventureCatalogEntry } from './config';
 import type { SavedGame } from './engine';
 
 const activeAdventure = shallowRef<Adventure | null>(null);

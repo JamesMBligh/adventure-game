@@ -76,7 +76,6 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
       </button>
       <h1>{{ headerTitle }}</h1>
       <span v-if="isDream" class="mode-tag" aria-label="Inside a dream">in-dream</span>
-      <span v-else-if="adventure.author" class="author">by {{ adventure.author }}</span>
     </header>
 
     <div class="stage">
@@ -119,11 +118,6 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
   font-size: 1.5rem;
   color: var(--hot);
   letter-spacing: 0.04em;
-}
-
-.author {
-  color: var(--ink-dim);
-  font-size: 0.9rem;
 }
 
 .mode-tag {

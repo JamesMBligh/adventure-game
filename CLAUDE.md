@@ -6,7 +6,7 @@ Guidance for Claude Code sessions working on this repository.
 
 A Vue 3 + Vite + TypeScript runtime for **point-and-click adventure games defined entirely by JSON**. The engine is intentionally generic: scene-object types, action types, and condition types are all dispatched through registries so new behaviour can be plugged in without touching the runtime.
 
-The repo ships **one player-facing game** — *The Wren House* (`src/adventures/main.json`), a vertical slice of an in-progress story about an apprentice who walks into other people's dreams. The engine also retains `cabin.json` as a dev-only regression fixture.
+The repo ships **one player-facing game** — *The Wren House* (`src/config/main/main.json`), a vertical slice of an in-progress story about an apprentice who walks into other people's dreams. The engine also retains `cabin.json` as a dev-only regression fixture.
 
 The story design lives in a separate repo: `https://github.com/JamesMBligh/adventure-story`. Background, characters, the device, the dreamworld rules, the patient roster, and the season arc all live there. Treat that repo as authoritative when authoring or extending content.
 
@@ -50,11 +50,23 @@ The story design lives in a separate repo: `https://github.com/JamesMBligh/adven
 - `src/App.vue` — switches between `StartPage` and `AdventureGame`. A `sessionKey` ref is bumped each launch so re-entering remounts with fresh state. Forwards an optional `SavedGame` snapshot for Continue.
 - `src/main.ts` — mounts `App` and imports global `style.css`.
 
-### Adventures
+### Config (adventures + assets)
 
-- `src/adventures/index.ts` — `mainAdventure` is the single canonical game. `adventureCatalog` includes it plus dev-only fixtures (gated behind `import.meta.env.DEV`).
-- `src/adventures/main.json` — *The Wren House*, a Whitfield-tutorial vertical slice. Hub scenes: study (the offer), landing (with the closed parents' suite door), Ashley's room, treatment room. Dream scenes: concert hall stage / wings / corridor. Witness, not exorcism. Exit phrase: *the light in the conservatory*.
-- `src/adventures/cabin.json` — engine regression bed (hidden keys, conditional reveals, dialog narration). Dev-only.
+Authored content and its assets live under `src/config/`:
+
+- `src/config/index.ts` — `mainAdventure` is the single canonical game. `adventureCatalog` includes it plus dev-only fixtures (gated behind `import.meta.env.DEV`). Imported as `'../config'` or `'./config'`. The main-adventure loader composes the playable Adventure by **merging dream files into main.json** at load time — see the dreams convention below.
+- `src/config/main/` — The mansion (outside-the-dream) half of the main game and its assets.
+  - `main.json` — *The Wren House*: title, flags, patients, sites (`mansion_first_floor`, `patient_rooms`), interactions, and mansion-side dialogs. No `scenes`, no `initialState.inventory`, no `items` — inventory is a dream-only concept.
+  - `floor1.webp`, `floor2.webp`, `location-icon.png`, `travel-icon-{left,up,down,right}.png` — site backgrounds and location markers.
+- `src/config/adventures/` — one file per dream and one per dev fixture.
+  - `whitfield.json` — Catherine Whitfield's dream world: scenes (`whitfield_stage`, `whitfield_wings`, `whitfield_corridor`) and the dream-only dialogs (`whitfieldGreeting`, `whitfieldExit`). Witness, not exorcism. Exit phrase: *the light in the conservatory*.
+  - `cabin.json` — engine regression bed (hidden keys, conditional reveals, dialog narration). Dev-only catalog entry.
+
+**Dreams convention.** Each patient with a dream gets a file whose name matches the patient id. At load time, `loadMainAdventure()` in `src/config/index.ts` enumerates dream files via `import.meta.glob('./adventures/*.json')`, and for every patient id that matches a dream file, merges that file's `scenes`, `dialogs`, and `items` into the composed Adventure. The patient definition's existing `dreamScene` field is what links a patient to a scene in their merged dream. Dreams may also declare `initialState.inventory`; the field is reserved for forthcoming dream-scoped inventory work and is currently ignored.
+
+**Two file types, validated separately.** The mansion config (`main.json`) and dream configs (`adventures/<patient>.json`) are typed independently — `MansionConfig` and `DreamConfig` in [src/types.ts](src/types.ts) — and will evolve independently. Each file gets a per-file structural validator (`validateMansionConfig`, `validateDreamConfig` in [src/engine/validate.ts](src/engine/validate.ts)) that runs before the merge, rejects wrong-file fields, and surfaces required-field omissions. Both validators emit prefixed paths (e.g. `main.json:scenes`, `adventures/whitfield.json:dreams.whitfield.title`) so error attribution is unambiguous. The existing `validateAdventure` continues to validate the merged result for cross-cutting checks (reference resolution, action/condition payloads, etc.).
+
+**Asset references in JSON.** Image-path strings in adventure JSON (e.g. `"background": "main/floor1.webp"`) are resolved by `src/engine/assets.ts`: `import.meta.glob` enumerates all images under `src/config/` so Vite bundles and hashes them. The path you write is the path relative to `src/config/`. Anything not found in the registry falls back to a `BASE_URL`-prefixed URL, so `public/` still works for non-config assets.
 
 ## Adventure JSON shape (essentials)
 
@@ -123,10 +135,15 @@ Triggers are arbitrary string keys; the engine just runs whichever action list m
 
 ## How to extend
 
-### Add an adventure
+### Add a dream
 
-1. Add the JSON under `src/adventures/`.
-2. Append it to `adventureCatalog` in `src/adventures/index.ts`. Use a dynamic import so it lazy-loads. Set `devOnly: true` for fixtures.
+1. Create `src/config/adventures/<patientId>.json` (the file name must match the patient id in `main.json`). Declare its `scenes` (the dream world's rooms) and any dream-only `dialogs`. Optionally declare `items` and `initialState.inventory` (the latter is reserved for forthcoming dream-scoped inventory work).
+2. Add a `patients.<patientId>` entry to `main.json` (or update an existing one) with `dreamScene` pointing to the entry scene id you just defined. No catalog edit needed — the loader picks the dream up automatically.
+
+### Add a standalone adventure (e.g. another dev fixture)
+
+1. Add the JSON under `src/config/adventures/`. Co-locate its image assets in the same folder; reference them from JSON as paths relative to `src/config/` (e.g. `"main/floor1.webp"`).
+2. Append it to `adventureCatalog` in `src/config/index.ts`. Use a dynamic import so it lazy-loads. Set `devOnly: true` for fixtures.
 
 ### Add an action / condition / object type
 
