@@ -1,595 +1,884 @@
 {
-  "title": "The Wren House",
-  "startSite": "mansion_first_floor",
-  "startInteraction": "study_offer",
-  "flags": {
-    "offerAccepted": {
-      "default": false,
-      "description": "Wren has formally asked Ashley to operate Mrs. Whitfield's next session."
-    },
-    "consideredTeacher": {
-      "default": false,
-      "description": "Ashley asked Catherine in the dream about who taught her to play."
-    },
-    "walkedCorridor": {
-      "default": false,
-      "description": "Ashley walked the back-of-stage corridor with Catherine in the dream."
-    },
-    "midGameUnlocked": {
-      "default": false,
-      "description": "The parents' suite has been opened. Reserved for later content."
-    },
-    "examinedFile": {
-      "default": false,
-      "description": "Ashley re-read the Whitfield file in her room."
-    },
-    "sessionCompleted": {
-      "default": false,
-      "description": "Ashley sat in the operator's chair and entered the dream."
-    },
-    "debriefComplete": {
-      "default": false,
-      "description": "Ashley has debriefed with Wren after the session."
-    }
-  },
-  "patients": {
-    "whitfield": {
-      "name": "Catherine Whitfield",
-      "presenting": "Concert pianist, mid-40s. Stage fright since a recital fifteen months ago. Body intact, technique intact; the freeze is psychological.",
-      "file": "Five sessions in. Three with Wren operating; Ashley observed two from the third chair.\n\nThe dream is a concert hall the size of a railway station. An audience that gathers without arriving. The piano keys will not let her down.\n\nWren's note (third session): the wings are deeper than the stage. Whatever she has been backing away from is somewhere down a corridor she has not yet had the company to walk.\n\nIntervention: witness, not exorcism. Walk the corridor with her. Let her show you. Do not perform on the work.\n\nExit phrase: the light in the conservatory.",
-      "dreamScene": "whitfield_stage",
-      "maxSessions": 6
-    }
-  },
-  "sites": {
-    "mansion_first_floor": {
-      "name": "First Floor — The Wren House",
-      "background": "main/floor1.webp",
-      "locations": {
-        "kitchen": {
-          "name": "Kitchen",
-          "x": 23,
-          "y": 23
+    "title": "The Wren Institute",
+    "startSite": "mansion_first_floor",
+    "startInteraction": "intro_sequence",
+    "flags": {
+        "introCompleted": {
+            "default": false,
+            "description": "The narrative introduction to the mansion is complete."
         },
-        "dining_room": {
-          "name": "Dining Room",
-          "x": 35,
-          "y": 17
+        "introDialogComplete": {
+            "default": false,
+            "description": "Elias has formally asked Ashley to operate Mrs. Whitfield's next session and explained how everthing works."
         },
-        "study": {
-          "name": "Wren's Study",
-          "x": 49,
-          "y": 17
+        "consideredTeacher": {
+            "default": false,
+            "description": "Ashley asked Catherine in the dream about who taught her to play."
         },
-        "treatment_room": {
-          "name": "Treatment Room",
-          "x": 63,
-          "y": 17
+        "walkedCorridor": {
+            "default": false,
+            "description": "Ashley walked the back-of-stage corridor with Catherine in the dream."
         },
-        "device_room": {
-          "name": "Device Room",
-          "x": 75,
-          "y": 17
+        "midGameUnlocked": {
+            "default": false,
+            "description": "The parents' suite has been opened. Reserved for later content."
         },
-        "library": {
-          "name": "Library",
-          "x": 67,
-          "y": 47
+        "examinedFile": {
+            "default": false,
+            "description": "Ashley re-read the Whitfield file in her room."
         },
-        "conservatory": {
-          "name": "Conservatory",
-          "x": 71,
-          "y": 68
+        "sessionCompleted": {
+            "default": false,
+            "description": "Ashley sat in the operator's chair and entered the dream."
         },
-        "reception": {
-          "name": "Reception",
-          "x": 56,
-          "y": 65
-        },
-        "lounge": {
-          "name": "Lounge",
-          "x": 27,
-          "y": 71
-        },
-        "trav_floor1_patients": {
-          "name": "To Patient's Wing",
-          "icon": "left",
-          "x": 11,
-          "y": 43.5,
-          "target": "patient_rooms"
-        },
-        "trav_floor1_floor2": {
-          "name": "To Second Floor",
-          "icon": "up",
-          "x": 46.5,
-          "y": 40,
-          "target": "mansion_second_floor"
+        "debriefComplete": {
+            "default": false,
+            "description": "Ashley has debriefed with Wren after the session."
         }
-      }
     },
-    "patient_rooms": {
-      "name": "PThe Patient's Wing",
-      "background": "main/floor2.webp",
-      "locations": {
-        "sunroom": {
-          "name": "The Sun Room",
-          "x": 17,
-          "y": 28
-        },
-        "patient5": {
-          "name": "Patient Room 5",
-          "x": 35,
-          "y": 33
-        },
-        "patient3": {
-          "name": "Patient Room 3",
-          "x": 65,
-          "y": 33
-        },
-        "nurses_office": {
-          "name": "Nurse's Office",
-          "x": 85.5,
-          "y": 33
-        },
-        "patient6": {
-          "name": "Patient Room 6",
-          "x": 17.5,
-          "y": 74
-        },
-        "patient4": {
-          "name": "Patient Room 4",
-          "x": 39,
-          "y": 74
-        },
-        "patient2": {
-          "name": "Patient Room 2",
-          "x": 61,
-          "y": 74
-        },
-        "patient1": {
-          "name": "Patient Room 1",
-          "x": 83,
-          "y": 74
-        },
-        "trav_patients_floor1": {
-          "name": "To Main Building",
-          "icon": "right",
-          "x": 95,
-          "y": 51,
-          "target": "mansion_first_floor"
+    "patients": {
+        "whitfield": {
+            "name": "Catherine Whitfield",
+            "dreamScene": "whitfield_stage",
+            "maxSessions": 6
         }
-      }
-    }
-  },
-  "interactions": [
-    {
-      "id": "study_offer",
-      "location": "study",
-      "conditions": [
-        { "type": "not", "condition": { "type": "flag", "flag": "offerAccepted" } }
-      ],
-      "background": "linear-gradient(180deg, #2a1d12 0%, #140e0a 100%)",
-      "animations": ["lamp-flicker", "vignette-flicker"],
-      "onEnter": [
+    },
+    "sites": {
+        "driveway": {
+            "name": "The Wren Institute Driveway",
+            "background": "",
+            "locations": {
+                "driveway": {
+                    "name": "Driveway",
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        "mansion_first_floor": {
+            "name": "First Floor — The Wren Institute",
+            "background": "main/floor1.webp",
+            "locations": {
+                "kitchen": {
+                    "name": "Kitchen",
+                    "x": 23,
+                    "y": 23
+                },
+                "dining_room": {
+                    "name": "Dining Room",
+                    "x": 35,
+                    "y": 17
+                },
+                "study": {
+                    "name": "Wren's Study",
+                    "x": 49,
+                    "y": 17
+                },
+                "treatment_room": {
+                    "name": "Treatment Room",
+                    "x": 63,
+                    "y": 17
+                },
+                "device_room": {
+                    "name": "Device Room",
+                    "x": 75,
+                    "y": 17
+                },
+                "library": {
+                    "name": "Library",
+                    "x": 67,
+                    "y": 47
+                },
+                "conservatory": {
+                    "name": "Conservatory",
+                    "x": 71,
+                    "y": 68
+                },
+                "reception": {
+                    "name": "Reception",
+                    "x": 56,
+                    "y": 65
+                },
+                "lounge": {
+                    "name": "Lounge",
+                    "x": 27,
+                    "y": 71
+                },
+                "trav_floor1_patients": {
+                    "name": "To Patient's Wing",
+                    "icon": "left",
+                    "x": 11,
+                    "y": 43.5,
+                    "target": "patient_rooms"
+                },
+                "trav_floor1_floor2": {
+                    "name": "To Second Floor",
+                    "icon": "up",
+                    "x": 46.5,
+                    "y": 40,
+                    "target": "mansion_second_floor"
+                }
+            }
+        },
+        "patient_rooms": {
+            "name": "PThe Patient's Wing",
+            "background": "main/floor2.webp",
+            "locations": {
+                "sunroom": {
+                    "name": "The Sun Room",
+                    "x": 17,
+                    "y": 28
+                },
+                "patient5": {
+                    "name": "Patient Room 5",
+                    "x": 35,
+                    "y": 33
+                },
+                "patient3": {
+                    "name": "Patient Room 3",
+                    "x": 65,
+                    "y": 33
+                },
+                "nurses_office": {
+                    "name": "Nurse's Office",
+                    "x": 85.5,
+                    "y": 33
+                },
+                "patient6": {
+                    "name": "Patient Room 6",
+                    "x": 17.5,
+                    "y": 74
+                },
+                "patient4": {
+                    "name": "Patient Room 4",
+                    "x": 39,
+                    "y": 74
+                },
+                "patient2": {
+                    "name": "Patient Room 2",
+                    "x": 61,
+                    "y": 74
+                },
+                "patient1": {
+                    "name": "Patient Room 1",
+                    "x": 83,
+                    "y": 74
+                },
+                "trav_patients_floor1": {
+                    "name": "To Main Building",
+                    "icon": "right",
+                    "x": 95,
+                    "y": 51,
+                    "target": "mansion_first_floor"
+                }
+            }
+        }
+    },
+    "interactions": [
         {
-          "type": "narrate",
-          "kind": "system",
-          "text": "Eight in the evening. Wren has set a second chair across from his own."
-        }
-      ],
-      "dialog": "wrenOffer"
-    },
-    {
-      "id": "study_empty",
-      "location": "study",
-      "background": "linear-gradient(180deg, #2a1d12 0%, #140e0a 100%)",
-      "animations": ["dim", "lamp-flicker"],
-      "dialog": "studyEmpty"
-    },
-    {
-      "id": "treatment_session",
-      "location": "treatment_room",
-      "conditions": [
-        { "type": "not", "condition": { "type": "flag", "flag": "sessionCompleted" } }
-      ],
-      "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
-      "animations": ["glow-pulse", "vignette-flicker"],
-      "dialog": "treatmentBegin"
-    },
-    {
-      "id": "treatment_debrief",
-      "location": "treatment_room",
-      "conditions": [
-        { "type": "not", "condition": { "type": "flag", "flag": "debriefComplete" } }
-      ],
-      "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
-      "animations": ["glow-pulse"],
-      "dialog": "debrief"
-    }
-  ],
-  "dialogs": {
-    "wrenOffer": {
-      "id": "wrenOffer",
-      "start": "open",
-      "nodes": {
-        "open": {
-          "speaker": "Wren",
-          "text": "Sit a moment. … How did you find Mrs. Whitfield this afternoon?",
-          "choices": [
-            {
-              "text": "Settled. A little brighter. She sat through the second hour without being prompted.",
-              "next": "gallery"
-            },
-            { "text": "Tense. She wouldn't meet me in the gallery.", "next": "gallery_alt" }
-          ]
-        },
-        "gallery": {
-          "speaker": "Wren",
-          "text": "And in the gallery?",
-          "choices": [
-            {
-              "text": "She walked the length of it twice. Stopped in front of the small Bonnard. I think she was looking at the hands.",
-              "next": "offer"
-            },
-            { "text": "She didn't go in.", "next": "offer" }
-          ]
-        },
-        "gallery_alt": {
-          "speaker": "Wren",
-          "text": "All right. — I think she's near, regardless. Closer than the file shows.",
-          "choices": [{ "text": "I think so too.", "next": "offer" }]
-        },
-        "offer": {
-          "speaker": "Wren",
-          "text": "I think she's close enough that the next session could be the one that releases her, if it is well done. Ashley. I think you should run the next session as the operator. I will monitor.",
-          "choices": [
-            {
-              "text": "Yes. I can. I'd like to.",
-              "actions": [
+            "id": "intro_sequence",
+            "location": "driveway",
+            "conditions": [
                 {
-                  "type": "narrate",
-                  "text": "He smiles — a private softness through the long horizon of his face."
+                    "type": "not",
+                    "condition": {
+                        "type": "flag",
+                        "flag": "introCompleted"
+                    }
                 }
-              ],
-              "next": "why"
-            },
-            {
-              "text": "I'd like to think about it.",
-              "actions": [
+            ],
+            "background": "main/intro_sequence/front-view-day.webp",
+            "animations": [],
+            "onEnter": [
                 {
-                  "type": "narrate",
-                  "text": "He nods once, the way he does when he has already accounted for the answer he was hoping for."
+                    "type": "narrate",
+                    "kind": "system",
+                    "text": "You return from a walk in the grounds of the Institute.  As you walked your thoughts turned to the things you have learned since being here, first as a patient and then as a member of staff."
+                },
+                {
+                    "type": "narrate",
+                    "kind": "system",
+                    "text": "As you turn the corner of the drive you pause to take in the view of the Mansion.  This is exactly how it looked a year ago when you first arrived."
+                },
+                {
+                    "type": "wait"
                 }
-              ],
-              "next": "why"
-            }
-          ]
-        },
-        "why": {
-          "speaker": "Wren",
-          "text": "You know why I'm asking you, and not asking — say — a colleague brought in for the purpose.",
-          "choices": [
-            { "text": "Because I know the case.", "next": "and" },
-            { "text": "Because you trust me.", "next": "and" }
-          ]
-        },
-        "and": {
-          "speaker": "Wren",
-          "text": "Yes. And: you came to me with eyes open. You read the things that have been written about me before you wrote to me. You came anyway. I trust you in this work as a clinician. Not as a grateful patient.",
-          "choices": [{ "text": "Thank you.", "next": "approach" }]
-        },
-        "approach": {
-          "speaker": "Wren",
-          "text": "Tell me what you will be looking for.",
-          "choices": [
-            {
-              "text": "The teacher. The figure she described in the second interview. Behind the curtain that won't quite open.",
-              "next": "company"
-            },
-            {
-              "text": "The keyboard. If I can move her hands, I can move her.",
-              "next": "wrong_target"
-            },
-            { "text": "I would let the dream show me.", "next": "company" }
-          ]
-        },
-        "wrong_target": {
-          "speaker": "Wren",
-          "text": "The keys are what she lets herself be afraid of, so she does not have to be afraid of him. Approach the keyboard and you'll do nothing. Where else?",
-          "choices": [
-            { "text": "Backstage. There is a corridor in there.", "next": "company" }
-          ]
-        },
-        "company": {
-          "speaker": "Wren",
-          "text": "Company. That's the right word. Don't perform on the work, Ashley. Walk the corridor with her. Let her show you. The dream will not give you what she has not chosen to give you, but if you are present and will not flinch, what she has been carrying alone will be lighter when she comes out. Witness, not exorcism.",
-          "choices": [{ "text": "Yes.", "next": "phrase" }]
-        },
-        "phrase": {
-          "speaker": "Wren",
-          "text": "And when you are finished. The phrase.",
-          "choices": [
-            { "text": "The light in the conservatory.", "next": "rule" },
-            {
-              "text": "I — remind me.",
-              "actions": [
-                {
-                  "type": "narrate",
-                  "text": "He looks at me steadily, and waits, and then says it himself."
+            ],
+            "dialog": {
+                "start": "open",
+                "nodes": {
+                    "open": {
+                        "kind": "system",
+                        "text": "You think to yourself...",
+                        "nochoice": {
+                            "next": "step1"
+                        }
+                    },
+                    "step1": {
+                        "kind": "inner",
+                        "text": "It never stops surprising me that I live here, let alone that I am apprentice to a disgraced academic with a cure for mental distress.",
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "wait"
+                                }
+                            ],
+                            "next": "step2"
+                        }
+                    },
+                    "step2": {
+                        "kind": "system",
+                        "text": "You resume walking into the mansion to attend your next meeting with Dr Elias Wren. Your mentor and the owner of the estate.",
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "setInteractionVisuals",
+                                    "background": "main/intro_sequence/front-view-close-day.webp",
+                                    "animations": [
+                                        "rain"
+                                    ]
+                                },
+                                {
+                                    "type": "pause",
+                                    "seconds": 1.5
+                                }
+                            ],
+                            "next": "step3"
+                        }
+                    },
+                    "step3": {
+                        "kind": "system",
+                        "text": "As you walk a light rain begins to fall.  You quicken your steps.",
+                        "nochoice": {
+                            "next": "step4"
+                        }
+                    },
+                    "step4": {
+                        "kind": "inner",
+                        "text": "I really need to get inside and stop putting this off. I know why Elias wants to meet with me. I can't believe I'm so nervous.",
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "wait"
+                                },
+                                {
+                                    "type": "setInteractionVisuals",
+                                    "background": "main/intro_sequence/entryway.webp",
+                                    "animations": null
+                                }
+                            ],
+                            "next": "close"
+                        }
+                    },
+                    "close": {
+                        "kind": "system",
+                        "text": "You pause briefly before the door.  Once you feel composed you head inside.",
+                        "onEnter": [],
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "wait"
+                                },
+                                {
+                                    "type": "setFlag",
+                                    "flag": "introCompleted",
+                                    "value": true
+                                },
+                                {
+                                    "type": "gotoSite",
+                                    "site": "mansion_first_floor"
+                                },
+                                {
+                                    "type": "endDialog"
+                                },
+                                {
+                                    "type": "narrate",
+                                    "kind": "system",
+                                    "text": "— You enter the mansion —\nThis is a map of the first floor of the Wren Institute.  Locations that can be visited are marked by an icon. New locations will become available as you progress."
+                                }
+                            ]
+                        }
+                    }
                 }
-              ],
-              "next": "rule_after_prompt"
             }
-          ]
         },
-        "rule_after_prompt": {
-          "speaker": "Wren",
-          "text": "The light in the conservatory. Speak it. Don't let it be a thought. Speak it.",
-          "choices": [{ "text": "I will.", "next": "rule" }]
-        },
-        "rule": {
-          "speaker": "Wren",
-          "text": "You will be safe. You will always be safe. Do you remember the rule?",
-          "choices": [
-            {
-              "text": "The operator cannot be harmed. The patient can. The weight is mine.",
-              "next": "close"
-            }
-          ]
-        },
-        "close": {
-          "speaker": "Wren",
-          "text": "The weight is yours. — Tomorrow afternoon. Read the file again. Don't read it tonight.",
-          "choices": [
-            {
-              "text": "Goodnight.",
-              "actions": [
-                { "type": "setFlag", "flag": "offerAccepted", "value": true },
+        {
+            "id": "intro_dialog",
+            "location": "study",
+            "highlight": true,
+            "conditions": [
                 {
-                  "type": "setPatientStatus",
-                  "patient": "whitfield",
-                  "status": "inResidence"
-                },
-                { "type": "endDialog" },
-                { "type": "narrate", "kind": "system", "text": "— The next afternoon. —" }
-              ]
-            }
-          ]
-        }
-      }
-    },
-    "studyEmpty": {
-      "id": "studyEmpty",
-      "start": "open",
-      "nodes": {
-        "open": {
-          "speaker": "Ashley",
-          "text": "Wren's study, empty now. The lamp is low. The room remembers him.",
-          "choices": [
-            { "text": "Step back to the landing.", "actions": [{ "type": "endDialog" }] }
-          ]
-        }
-      }
-    },
-    "ashleyRoom": {
-      "id": "ashleyRoom",
-      "start": "open",
-      "nodes": {
-        "open": {
-          "speaker": "Ashley",
-          "text": "My room. Modest. Not new. The Whitfield file is on the bedside table where I left it.",
-          "choices": [
-            {
-              "text": "Read the file again.",
-              "actions": [
-                {
-                  "type": "narrate",
-                  "text": "I read it again, as Elias did not ask. The same five pages. The phrase, on the inside cover, in his hand: the light in the conservatory."
-                },
-                { "type": "setFlag", "flag": "examinedFile", "value": true }
-              ],
-              "next": "after_read"
-            },
-            {
-              "text": "Sit at the window a while.",
-              "actions": [
-                {
-                  "type": "narrate",
-                  "text": "The window faces the courtyard. The rain has not quite committed to falling. The minutes pass and the courtyard does not change."
+                    "type": "not",
+                    "condition": {
+                        "type": "flag",
+                        "flag": "introDialogComplete"
+                    }
                 }
-              ]
-            },
-            {
-              "text": "Step out to the landing.",
-              "actions": [{ "type": "endDialog" }]
-            }
-          ]
-        },
-        "after_read": {
-          "speaker": "Ashley",
-          "text": "I close the file. The lamp is steady. Five pages, and the phrase on the inside cover.",
-          "choices": [
-            {
-              "text": "Step out to the landing.",
-              "actions": [{ "type": "endDialog" }]
-            }
-          ]
-        }
-      }
-    },
-    "treatmentBegin": {
-      "id": "treatmentBegin",
-      "start": "open",
-      "nodes": {
-        "open": {
-          "speaker": "Ashley",
-          "text": "The treatment room. Three chairs and a rig of instruments. Mrs. Whitfield is in the patient's chair, sedated, breathing slowly. Wren stands at the rig.",
-          "choices": [
-            {
-              "text": "Look at Catherine.",
-              "actions": [
+            ],
+            "background": "main/study/study-door.webp",
+            "overlays": [
                 {
-                  "type": "narrate",
-                  "text": "Her hands are folded in her lap. The freeze hasn't reached them here."
+                    "id": "elias_standing",
+                    "image": "main/study/elias-at-window.png",
+                    "place": {
+                        "top": 15,
+                        "left": 57,
+                        "scale": 21.4
+                    },
+                    "transition": "fade"
                 }
-              ]
-            },
-            {
-              "text": "Look at the rig.",
-              "actions": [
+            ],
+            "onEnter": [
                 {
-                  "type": "narrate",
-                  "text": "Glass instruments. A thin amber line moving across a paper drum. Wren's hand rests on the dial."
+                    "type": "narrate",
+                    "kind": "system",
+                    "text": "You enter Elias' study. He is standing by the window looking out thoughtfully."
+                },
+                {
+                    "type": "wait"
                 }
-              ]
-            },
-            {
-              "text": "Sit in the operator's chair.",
-              "visibleIf": { "type": "flag", "flag": "examinedFile" },
-              "actions": [
-                {
-                  "type": "narrate",
-                  "kind": "system",
-                  "text": "You sit. Wren sets the timer. The room narrows to the lamp and his hands at the rig."
-                },
-                {
-                  "type": "narrate",
-                  "speaker": "Wren",
-                  "kind": "dialog",
-                  "text": "When you are ready."
-                },
-                { "type": "setFlag", "flag": "sessionCompleted", "value": true },
-                { "type": "endDialog" },
-                { "type": "enterDream", "patient": "whitfield" }
-              ]
-            },
-            {
-              "text": "Sit in the operator's chair.",
-              "visibleIf": { "type": "not", "condition": { "type": "flag", "flag": "examinedFile" } },
-              "actions": [
-                {
-                  "type": "narrate",
-                  "text": "You hesitate. Wren glances at you over the rig."
-                },
-                {
-                  "type": "narrate",
-                  "speaker": "Wren",
-                  "kind": "dialog",
-                  "text": "Read the file again before we begin. It's still on the bedside table."
+            ],
+            "dialog": {
+                "start": "open",
+                "nodes": {
+                    "open": {
+                        "speaker": "Elias",
+                        "text": "You're back from your walk.  I noticed it rained briefly.  I hope you weren't caught out.",
+                        "choices": [
+                            {
+                                "text": "Only a little. I was too lost in my thoughts to notice.",
+                                "next": "step1",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "text": "He glances at you with concern and then returns his gaze to the window."
+                                    }
+                                ]
+                            },
+                            {
+                                "text": "No. Not at all.",
+                                "next": "step1",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "text": "He nods slightly."
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "step1": {
+                        "speaker": "Elias",
+                        "text": "I think it's time Ashley.  I think you are ready to operate solo for the first time.",
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "Elias walks over and sits at his desk."
+                                },
+                                {
+                                    "type": "setInteractionVisuals",
+                                    "removeOverlay": "elias_standing"
+                                },
+                                {
+                                    "type": "setInteractionVisuals",
+                                    "addOverlay": {
+                                        "id": "elias_sitting",
+                                        "image": "main/study/elias-seated.png",
+                                        "place": {
+                                            "top": 26.2,
+                                            "left": 43.8,
+                                            "scale": 16
+                                        },
+                                        "transition": "fade"
+                                    }
+                                },
+                                {
+                                    "type": "pause",
+                                    "seconds": 1.5
+                                }
+                            ],
+                            "next": "step2"
+                        }
+                    },
+                    "step2": {
+                        "speaker": "Elias",
+                        "text": "How do feel about going solo?  Are you ready?",
+                        "choices": [
+                            {
+                                "text": "I think so, but I'm still nervous. It's a big responsibility.",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "kind": "dialog",
+                                        "speaker": "Elias",
+                                        "text": "Fair enough.  Let's go over everything one more time."
+                                    },
+                                    {
+                                        "type": "pause",
+                                        "seconds": 1
+                                    }
+                                ],
+                                "next": "step3"
+                            },
+                            {
+                                "text": "Absolutely.  I feel prepared and excited to take the next step.",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "text": "Elias chuckles."
+                                    },
+                                    {
+                                        "type": "narrate",
+                                        "kind": "dialog",
+                                        "speaker": "Elias",
+                                        "text": "I love your confidence. Just to make sure, however, Let's go over everything one more time."
+                                    },
+                                    {
+                                        "type": "pause",
+                                        "seconds": 1
+                                    }
+                                ],
+                                "next": "step3"
+                            }
+                        ]
+                    },
+                    "step3": {
+                        "speaker": "Elias",
+                        "text": "I will bring the patient in and get her settled. I will then administer sedation and initiate a hypnotic trance. While I do this you will prepare yourself in the operator chair in the device room.",
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "wait"
+                                },
+                                {
+                                    "type": "narrate",
+                                    "kind": "dialog",
+                                    "speaker": "Elias",
+                                    "text": "I will monitor the patient until I detect a strong delta wave with gamma spikes indicating active REM sleep. Once she has reached this state I will initiate the dream walk.  Then it's up to you."
+                                },
+                                {
+                                    "type": "wait"
+                                }
+                            ],
+                            "next": "questions"
+                        }
+                    },
+                    "questions": {
+                        "speaker": "Elias",
+                        "text": "Any other questions?",
+                        "onEnter": [
+                            {
+                                "type": "wait"
+                            }
+                        ],
+                        "choices": [
+                            {
+                                "text": "Once I'm in the dream how do I know what to do to help the patient?",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "kind": "dialog",
+                                        "speaker": "Elias",
+                                        "text": "Ah, this is always the biggest challenge. The answer is that you really don't. You need to understand the patient and the dream itself to figure that out. Reading the case file and spending the time to explore the dream are the only real ways to determine what will ultimately help the patient."
+                                    },
+                                    {
+                                        "type": "pause",
+                                        "seconds": 1
+                                    }
+                                ],
+                                "next": "questions"
+                            },
+                            {
+                                "text": "Can I be harmed inside the dream?",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "kind": "dialog",
+                                        "speaker": "Elias",
+                                        "text": "No, there is no psychological risk to the operator. It is draining, however, and we don't know what happens if you reach the point of exhaustion while still dream walking. Avoid that outcome."
+                                    },
+                                    {
+                                        "type": "narrate",
+                                        "kind": "dialog",
+                                        "speaker": "Elias",
+                                        "text": "Unfortunately the patient is not so safe.  Just as a dream walk can provide amazing benefit, if done poorly it can be psychologically harmful and make matters work.  You must be careful."
+                                    },
+                                    {
+                                        "type": "pause",
+                                        "seconds": 1
+                                    }
+                                ],
+                                "next": "questions"
+                            },
+                            {
+                                "text": "How do I leave the dream?",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "kind": "dialog",
+                                        "speaker": "Elias",
+                                        "text": "The best way to exit the dream is to resolve the remaining issues that trouble the patient. Once this happens the patient usually falls into a deep sleep and the dream naturally ends. You can leave the dream at any time however.  I will be monitoring and you only need to signal me."
+                                    },
+                                    {
+                                        "type": "pause",
+                                        "seconds": 1
+                                    }
+                                ],
+                                "next": "questions"
+                            },
+                            {
+                                "text": "Does the patient know what I'll be doing?",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "text": "Elias looks annoyed with you."
+                                    },
+                                    {
+                                        "type": "narrate",
+                                        "kind": "dialog",
+                                        "speaker": "Elias",
+                                        "text": "I am not going to enter into this debate again. My policy is that the patients are to believe their relief comes from hypnotherapy only. I do not wish the existence of the device to be widely known. I'm surprised you would even bring this up again."
+                                    },
+                                    {
+                                        "type": "pause",
+                                        "seconds": 1
+                                    }
+                                ],
+                                "next": "questions"
+                            },
+                            {
+                                "text": "No. I'm ready.",
+                                "next": "close"
+                            }
+                        ]
+                    },
+                    "close": {
+                        "speaker": "Elias",
+                        "text": "Very well then. Head to the device room while I prepare Mrs Whitfield. I will signal you when she is ready. You should use the intervening time to review the case file.",
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "Elias hands you the case file for Mrs Whitfield"
+                                },
+                                {
+                                    "type": "setFlag",
+                                    "flag": "introDialogComplete",
+                                    "value": true
+                                },
+                                {
+                                    "type": "setPatientStatus",
+                                    "patient": "whitfield",
+                                    "status": "inResidence"
+                                },
+                                {
+                                    "type": "endDialog"
+                                },
+                                {
+                                    "type": "narrate",
+                                    "kind": "system",
+                                    "text": "— You rise and leave the study —"
+                                },
+                                {
+                                    "type": "narrate",
+                                    "kind": "system",
+                                    "text": "You can now access your case files by clicking the button in the title bar"
+                                }
+                            ]
+                        }
+                    }
                 }
-              ]
-            },
-            {
-              "text": "Step back to the landing.",
-              "actions": [{ "type": "endDialog" }]
             }
-          ]
-        }
-      }
-    },
-    "parentsClosed": {
-      "id": "parentsClosed",
-      "start": "open",
-      "nodes": {
-        "open": {
-          "speaker": "Ashley",
-          "text": "The handle turns and stops. There is a particular weight on the other side that you have learned to step around. — The parents' suite is closed to you.",
-          "choices": [
-            { "text": "Turn away.", "actions": [{ "type": "endDialog" }] }
-          ]
-        }
-      }
-    },
-    "parentsUnlocked": {
-      "id": "parentsUnlocked",
-      "start": "open",
-      "nodes": {
-        "open": {
-          "speaker": "Ashley",
-          "text": "The door is open now. — But not yet. Not in this slice.",
-          "choices": [
-            { "text": "Step back.", "actions": [{ "type": "endDialog" }] }
-          ]
-        }
-      }
-    },
-    "debrief": {
-      "id": "debrief",
-      "start": "open",
-      "nodes": {
-        "open": {
-          "speaker": "Wren",
-          "text": "You're back. Take a moment.",
-          "choices": [{ "text": "I'm here.", "next": "ask" }]
         },
-        "ask": {
-          "speaker": "Wren",
-          "text": "Tell me what happened.",
-          "choices": [
-            {
-              "text": "I walked the corridor with her.",
-              "visibleIf": { "type": "flag", "flag": "walkedCorridor" },
-              "next": "good"
-            },
-            {
-              "text": "I didn't reach the corridor.",
-              "visibleIf": { "type": "not", "condition": { "type": "flag", "flag": "walkedCorridor" } },
-              "next": "bad"
+        {
+            "id": "whitfield_session",
+            "location": "treatment_room",
+            "conditions": [
+                {
+                    "type": "and",
+                    "conditions": [
+                        {
+                            "type": "not",
+                            "condition": {
+                                "type": "flag",
+                                "flag": "sessionCompleted"
+                            }
+                        },
+                        {
+                            "type": "flag",
+                            "flag": "introDialogComplete"
+                        }
+                    ]
+                }
+            ],
+            "background": "main/treatment/treatment-room.webp",
+            "onEnter": [
+                {
+                    "type": "narrate",
+                    "kind": "system",
+                    "text": "You enter the treatment room to prepare for your first time as solo operator."
+                }
+            ],
+            "dialog": {
+                "start": "open",
+                "nodes": {
+                    "open": {
+                        "type": "narrate",
+                        "text": "The treatment room is clinical but functional.  It is certainly a non-standard room for providing psychological therapy. But the therapy provided in this room is also non-standard.\n\nThe treatment room contains the therapy chair and the control rig.  There is also a door through to the device room.",
+                        "choices": [
+                            {
+                                "text": "Examine the chair.",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "text": "The chair is comfortable but functional.  It is designed to keep the patient safe from cramps or blood clots during long periods of deep sleep."
+                                    }
+                                ]
+                            },
+                            {
+                                "text": "Examine the control rig.",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "text": "The control rig is a critical component of the device and I have been instructed in its use. But, despite many hours of operation, I have no idea how it works.\n\nElias has told me that the headset, that is placed over the patient's head, manipulates brain waves during sleep but beyond that it is a mystery to me."
+                                    }
+                                ]
+                            },
+                            {
+                                "text": "Step into the device room.",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "kind": "system",
+                                        "text": "— You open the door and step into the device room —"
+                                    },
+                                    {
+                                        "type": "setInteractionVisuals",
+                                        "background": "main/treatment/device-room.webp"
+                                    },
+                                    {
+                                        "type": "pause",
+                                        "seconds": 1.5
+                                    }
+                                ],
+                                "next": "step1"
+                            }
+                        ]
+                    },
+                    "step1": {
+                        "type": "narrate",
+                        "text": "The device room has a very different feel. Patients are not expected to enter this room.  As a result, the room is bare, functional and no nonsense.\n\nThere are two chairs, with their device connected headsets, here.  The first chair is for the operator and the second for an observer.",
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "My next step is to ready myself in the operator chair and wait for Elias to let me know that patient, Mrs Whitfield, is prepared."
+                                },
+                                {
+                                    "type": "pause",
+                                    "seconds": 1.5
+                                }
+                            ],
+                            "next": "step2"
+                        }
+                    },
+                    "step2": {
+                        "type": "narrate",
+                        "text": "This is my last chance to review the case file before I begin the session.",
+                        "choices": [
+                            {
+                                "text": "I'm ready.  Sit in the operator chair.",
+                                "actions": [
+                                    {
+                                        "type": "narrate",
+                                        "kind": "system",
+                                        "text": "You sit. You hear activity in the treatment room as Dr Wren and Mrs Whitfield enter. Eventually, Elias' voice sounds in your headset."
+                                    },
+                                    {
+                                        "type": "narrate",
+                                        "speaker": "Elias",
+                                        "kind": "dialog",
+                                        "text": "Alright Ashley.  Let's begin."
+                                    },
+                                    {
+                                        "type": "wait"
+                                    },
+                                    {
+                                        "type": "setFlag",
+                                        "flag": "sessionCompleted",
+                                        "value": true
+                                    },
+                                    {
+                                        "type": "endDialog"
+                                    },
+                                    {
+                                        "type": "enterDream",
+                                        "patient": "whitfield"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
             }
-          ]
         },
-        "good": {
-          "speaker": "Wren",
-          "text": "Then she will wake lighter. — That is what we are doing. Not exorcism. Witness. You did the work.",
-          "choices": [
-            {
-              "text": "(end of session)",
-              "actions": [
+        {
+            "id": "treatment_debrief",
+            "location": "treatment_room",
+            "conditions": [
                 {
-                  "type": "setPatientStatus",
-                  "patient": "whitfield",
-                  "status": "improving"
-                },
-                {
-                  "type": "recordPatientNote",
-                  "patient": "whitfield",
-                  "note": "Walked the corridor with her."
-                },
-                {
-                  "type": "narrate",
-                  "kind": "system",
-                  "text": "Mrs. Whitfield will sleep through the afternoon. She will be brighter at supper than she has been in fifteen months."
-                },
-                { "type": "setFlag", "flag": "debriefComplete", "value": true },
-                { "type": "endDialog" }
-              ]
+                    "type": "and",
+                    "conditions": [
+                        {
+                            "type": "not",
+                            "condition": {
+                                "type": "flag",
+                                "flag": "debriefComplete"
+                            }
+                        },
+                        {
+                            "type": "flag",
+                            "flag": "sessionCompleted"
+                        }
+                    ]
+                }
+            ],
+            "background": "linear-gradient(180deg, #131a22 0%, #08101a 100%)",
+            "animations": [
+                "glow-pulse"
+            ],
+            "dialog": {
+                "start": "open",
+                "nodes": {
+                    "open": {
+                        "speaker": "Wren",
+                        "text": "You're back. Take a moment.",
+                        "choices": [
+                            {
+                                "text": "I'm here.",
+                                "next": "ask"
+                            }
+                        ]
+                    },
+                    "ask": {
+                        "speaker": "Wren",
+                        "text": "Tell me what happened.",
+                        "choices": [
+                            {
+                                "text": "I walked the corridor with her.",
+                                "visibleIf": {
+                                    "type": "flag",
+                                    "flag": "walkedCorridor"
+                                },
+                                "next": "good"
+                            },
+                            {
+                                "text": "I didn't reach the corridor.",
+                                "visibleIf": {
+                                    "type": "not",
+                                    "condition": {
+                                        "type": "flag",
+                                        "flag": "walkedCorridor"
+                                    }
+                                },
+                                "next": "bad"
+                            }
+                        ]
+                    },
+                    "good": {
+                        "speaker": "Wren",
+                        "text": "Then she will wake lighter. — That is what we are doing. Not exorcism. Witness. You did the work.",
+                        "choices": [
+                            {
+                                "text": "(end of session)",
+                                "actions": [
+                                    {
+                                        "type": "setPatientStatus",
+                                        "patient": "whitfield",
+                                        "status": "improving"
+                                    },
+                                    {
+                                        "type": "recordPatientNote",
+                                        "patient": "whitfield",
+                                        "note": "Walked the corridor with her."
+                                    },
+                                    {
+                                        "type": "narrate",
+                                        "kind": "system",
+                                        "text": "Mrs. Whitfield will sleep through the afternoon. She will be brighter at supper than she has been in fifteen months."
+                                    },
+                                    {
+                                        "type": "setFlag",
+                                        "flag": "debriefComplete",
+                                        "value": true
+                                    },
+                                    {
+                                        "type": "endDialog"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "bad": {
+                        "speaker": "Wren",
+                        "text": "It happens. The dream does not always show its corridor on the first asking. We try again. Re-entry is permitted within her stay.",
+                        "choices": [
+                            {
+                                "text": "I understand.",
+                                "actions": [
+                                    {
+                                        "type": "setPatientStatus",
+                                        "patient": "whitfield",
+                                        "status": "unhelped"
+                                    },
+                                    {
+                                        "type": "recordPatientNote",
+                                        "patient": "whitfield",
+                                        "note": "Session ended without reaching the corridor."
+                                    },
+                                    {
+                                        "type": "setFlag",
+                                        "flag": "debriefComplete",
+                                        "value": true
+                                    },
+                                    {
+                                        "type": "endDialog"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
             }
-          ]
         },
-        "bad": {
-          "speaker": "Wren",
-          "text": "It happens. The dream does not always show its corridor on the first asking. We try again. Re-entry is permitted within her stay.",
-          "choices": [
-            {
-              "text": "I understand.",
-              "actions": [
-                {
-                  "type": "setPatientStatus",
-                  "patient": "whitfield",
-                  "status": "unhelped"
-                },
-                {
-                  "type": "recordPatientNote",
-                  "patient": "whitfield",
-                  "note": "Session ended without reaching the corridor."
-                },
-                { "type": "setFlag", "flag": "debriefComplete", "value": true },
-                { "type": "endDialog" }
-              ]
+        {
+            "id": "study_empty",
+            "location": "study",
+            "background": "main/study/study-door.webp",
+            "dialog": {
+                "start": "open",
+                "nodes": {
+                    "open": {
+                        "text": "Elias' study is empty. He is currently elsewhere.",
+                        "nochoice": {
+                            "actions": [
+                                {
+                                    "type": "wait"
+                                },
+                                {
+                                    "type": "narrate",
+                                    "kind": "system",
+                                    "text": "You step back out of the room."
+                                },
+                                {
+                                    "type": "endDialog"
+                                }
+                            ]
+                        }
+                    }
+                }
             }
-          ]
         }
-      }
-    }
-  }
+    ]
 }

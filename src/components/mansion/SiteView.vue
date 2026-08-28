@@ -69,7 +69,7 @@ async function click(id: string) {
           :key="entry.id"
           type="button"
           class="location"
-          :class="{ 'is-transition': !!entry.location.target }"
+          :class="{ 'is-transition': !!entry.location.target, 'is-highlighted': entry.highlight }"
           :style="pointStyle(entry.location)"
           :aria-label="entry.location.name"
           @click="click(entry.id)"
@@ -144,6 +144,40 @@ async function click(id: string) {
   outline: none;
 }
 
+/* Pulsing glow for locations whose qualifying interaction is flagged
+ * `highlight: true`. Amplitude and colour match the hover treatment so a
+ * highlighted icon reads as "hover-like, but the game is doing it". Hovering
+ * a highlighted icon still snaps to the stronger hover state (rules below
+ * win on specificity / order). */
+.location.is-highlighted {
+  animation: location-pulse 1.8s ease-in-out infinite;
+}
+
+.location.is-highlighted:hover,
+.location.is-highlighted:focus-visible {
+  animation: none;
+}
+
+@keyframes location-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55))
+      drop-shadow(0 0 2px rgba(240, 192, 96, 0.25));
+  }
+  50% {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55))
+      drop-shadow(0 0 8px rgba(240, 192, 96, 0.75));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .location.is-highlighted {
+    animation: none;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55))
+      drop-shadow(0 0 6px rgba(240, 192, 96, 0.65));
+  }
+}
+
 .location-tooltip {
   position: absolute;
   bottom: calc(100% + 6px);
@@ -181,7 +215,7 @@ async function click(id: string) {
 }
 
 .site > :deep(.narration) {
-  height: 200px;
+  height: 260px;
 }
 
 .fade-overlay {

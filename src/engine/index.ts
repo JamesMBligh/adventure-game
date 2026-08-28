@@ -1,4 +1,13 @@
-export { GameEngine, ensureBuiltInsRegistered, SCHEMA_VERSION } from './engine';
+export {
+  GameEngine,
+  ensureBuiltInsRegistered,
+  SCHEMA_VERSION,
+  getWordRevealMs,
+  setWordRevealMs,
+  getDreamTransitionFadeMs,
+  getDreamTransitionHoldMs,
+  setDreamTransitionTiming,
+} from './engine';
 export type { EngineSnapshot } from './engine';
 export {
   actionRegistry,
@@ -19,10 +28,21 @@ export {
   validateAdventure,
   validateMansionConfig,
   validateDreamConfig,
+  validateCasesConfig,
   formatValidationErrors,
   type AdventureValidationError,
 } from './validate';
-export { isUrlLike, resolveAssetUrl } from './assets';
+export { isUrlLike, resolveAssetUrl, resolveMarkdown, getImageNaturalSize } from './assets';
+export {
+  effectiveDisplayRect,
+  effectiveDisplayPlace,
+  effectiveHit,
+  effectiveHitRect,
+  pointInEllipse,
+  pointInPolygon,
+  polygonSelfIntersects,
+  type HitShape,
+} from './sceneObjects';
 export {
   saveGame,
   loadGame,

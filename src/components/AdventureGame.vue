@@ -1,17 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef } from 'vue';
+import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue';
 import type { Adventure } from '../types';
 import { GameEngine, ensureBuiltInsRegistered, attachAutosave, type SavedGame } from '../engine';
 import { SCENE_WIDTH } from '../engine/layout';
 import SceneView from './SceneView.vue';
 import NarrationPanel from './NarrationPanel.vue';
 import SidePanel from './SidePanel.vue';
+import CaseFilesModal from './CaseFilesModal.vue';
+import DreamTransition from './DreamTransition.vue';
 import MansionView from './mansion/MansionView.vue';
 
 const props = defineProps<{
   adventure: Adventure;
   adventureId: string;
   resumeFrom?: SavedGame | null;
+  /** When true, the autosave hook is not attached — used for throwaway
+   *  debug-profile sessions so they don't clobber a real save. */
+  noAutosave?: boolean;
 }>();
 
 defineEmits<{
@@ -21,13 +26,22 @@ defineEmits<{
 ensureBuiltInsRegistered();
 
 const engine = shallowRef<GameEngine>(new GameEngine(props.adventure));
-attachAutosave(engine.value, props.adventureId);
+if (!props.noAutosave) {
+  attachAutosave(engine.value, props.adventureId);
+}
+
+// Restore synchronously in setup (not in onMounted) so the narration log is
+// already populated when NarrationPanel mounts — its onMounted then marks all
+// existing entries as fully revealed, skipping the word-by-word animation
+// for restored history. Otherwise the entries arrive after NarrationPanel's
+// mount and get fed to the reveal loop instead.
+const resumed =
+  props.resumeFrom !== null &&
+  props.resumeFrom !== undefined &&
+  engine.value.restore(props.resumeFrom.snapshot);
 
 onMounted(async () => {
-  if (props.resumeFrom && engine.value.restore(props.resumeFrom.snapshot)) {
-    // Resume: state is restored; persist hook re-armed by attachAutosave already.
-    return;
-  }
+  if (resumed) return;
   await engine.value.start();
 });
 
@@ -66,6 +80,50 @@ const headerTitle = computed(() => {
 });
 
 const sceneColStyle = { width: `${SCENE_WIDTH}px` };
+
+const caseModalOpen = ref(false);
+const hasAvailableCases = computed(
+  () => engine.value.availableCaseFiles.value.length > 0,
+);
+
+// "Click to continue" handling: when the `wait` action is suspended, the
+// engine sets continueWaitId. We capture clicks via a transparent overlay
+// (so clicks don't double-fire on underlying scene objects / location markers)
+// and keyboard input via a document listener (any key continues).
+const isWaitingForContinue = computed(() => engine.value.continueWaitId.value !== null);
+
+function continueWait() {
+  engine.value.continueWait();
+}
+
+function handleKey(e: KeyboardEvent) {
+  // While waiting for the player to dismiss a `wait` prompt, ANY key advances.
+  if (isWaitingForContinue.value) {
+    engine.value.continueWait();
+    return;
+  }
+  // Spacebar otherwise → skip the current text reveal (both the UI animation
+  // and the engine's awaitTextReveal timer).
+  if (e.code !== 'Space') return;
+  // Don't hijack space when a button, link, or input has focus — the player is
+  // likely about to activate it.
+  const target = e.target as HTMLElement | null;
+  if (
+    target &&
+    (target.tagName === 'BUTTON' ||
+      target.tagName === 'A' ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable)
+  ) {
+    return;
+  }
+  e.preventDefault(); // suppress page-scroll behaviour
+  engine.value.skipReveal();
+}
+
+onMounted(() => document.addEventListener('keydown', handleKey));
+onUnmounted(() => document.removeEventListener('keydown', handleKey));
 </script>
 
 <template>
@@ -76,6 +134,15 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
       </button>
       <h1>{{ headerTitle }}</h1>
       <span v-if="isDream" class="mode-tag" aria-label="Inside a dream">in-dream</span>
+      <button
+        v-if="hasAvailableCases"
+        type="button"
+        class="case-files-tab"
+        :aria-pressed="caseModalOpen"
+        @click="caseModalOpen = !caseModalOpen"
+      >
+        Case Files
+      </button>
     </header>
 
     <div class="stage">
@@ -85,9 +152,25 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
           <SceneView :engine="engine" />
           <NarrationPanel :engine="engine" />
         </div>
-        <SidePanel :engine="engine" :hide-case-files="isDream" />
+        <SidePanel :engine="engine" />
       </template>
     </div>
+
+    <CaseFilesModal
+      :engine="engine"
+      :open="caseModalOpen"
+      @close="caseModalOpen = false"
+    />
+
+    <DreamTransition :engine="engine" />
+
+    <!-- Full-viewport click trap when a `wait` action is suspended. -->
+    <div
+      v-if="isWaitingForContinue"
+      class="continue-overlay"
+      aria-hidden="true"
+      @click="continueWait"
+    />
   </div>
 </template>
 
@@ -105,6 +188,10 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
   display: flex;
   align-items: baseline;
   gap: 0.75rem;
+  /* Establish a stacking context above .continue-overlay (z-index 100) so the
+   * Menu button stays clickable while a `wait` is suspended. */
+  position: relative;
+  z-index: 101;
 }
 
 .back {
@@ -129,10 +216,36 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
   padding: 0.05rem 0.4rem;
 }
 
+.case-files-tab {
+  margin-left: auto;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--ink);
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+}
+
+.case-files-tab:hover,
+.case-files-tab[aria-pressed='true'] {
+  border-color: var(--hot);
+  color: var(--hot);
+}
+
 .stage {
   display: flex;
   align-items: stretch;
   gap: 0.75rem;
+}
+
+.continue-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  cursor: pointer;
+  background: transparent;
 }
 
 .scene-column {
@@ -143,7 +256,7 @@ const sceneColStyle = { width: `${SCENE_WIDTH}px` };
 }
 
 .scene-column > :deep(.narration) {
-  height: 280px;
+  height: 260px;
 }
 
 .mode-dream :deep(.narration .line.kind-narration) {

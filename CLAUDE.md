@@ -42,7 +42,9 @@ The story design lives in a separate repo: `https://github.com/JamesMBligh/adven
 - `SceneObjectView.vue` — generic clickable region. Looks up its inner renderer in `objectComponentRegistry` keyed by `object.type` (default `hotspot`).
 - `HotspotObject.vue` — default object renderer (transparent box, optional image, optional colour overlay).
 - `NarrationPanel.vue` — scrollable log; auto-scrolls on new entries. When a dialog is active, renders the active node's choices as buttons after the latest narration line.
-- `SidePanel.vue` — tabbed panel: **Inventory** (player items) and **Case Files** (patients with status `inResidence | improving | healed`). The Case Files tab is hidden inside dreams (`hideCaseFiles` prop).
+- `SidePanel.vue` — inventory panel (player items only). Visible in both mansion and dream views.
+- `CaseFilesModal.vue` — full-screen modal opened from the header's Case Files tab. Two-pane layout: cases list on the left → per-case document list (with back link) → markdown content on the right. Esc and backdrop click close.
+- `MarkdownView.vue` — drops a hand-rolled `renderMarkdown(src)` result via `v-html` in a scoped, styled wrapper. Used by the case-files modal.
 - `StartPage.vue` — single-game title screen. New Game / Continue / About. Lists dev fixtures only when `import.meta.env.DEV` is true.
 
 ### App shell
@@ -58,15 +60,19 @@ Authored content and its assets live under `src/config/`:
 - `src/config/main/` — The mansion (outside-the-dream) half of the main game and its assets.
   - `main.json` — *The Wren House*: title, flags, patients, sites (`mansion_first_floor`, `patient_rooms`), interactions, and mansion-side dialogs. No `scenes`, no `initialState.inventory`, no `items` — inventory is a dream-only concept.
   - `floor1.webp`, `floor2.webp`, `location-icon.png`, `travel-icon-{left,up,down,right}.png` — site backgrounds and location markers.
-- `src/config/adventures/` — one file per dream and one per dev fixture.
+- `src/config/adventures/` — one file per dream and one per dev fixture, plus optional sibling case files.
   - `whitfield.json` — Catherine Whitfield's dream world: scenes (`whitfield_stage`, `whitfield_wings`, `whitfield_corridor`) and the dream-only dialogs (`whitfieldGreeting`, `whitfieldExit`). Witness, not exorcism. Exit phrase: *the light in the conservatory*.
-  - `cabin.json` — engine regression bed (hidden keys, conditional reveals, dialog narration). Dev-only catalog entry.
+  - `whitfield.cases.json` — Whitfield's case file metadata. Markdown content lives in `whitfield/*.md`.
+  - `whitfield/` — markdown documents referenced by `whitfield.cases.json`.
+  - `cabin.json` — engine regression bed: hidden keys, conditional reveals, narration kinds, flag declarations, scene-kind (`hub` `clearing` + `dream` `interior`/`cellar`), and the `dreamTransition` action (moonwell in/out + looking-glass out + vanilla door out — three deliberately different exit paths). Dev-only catalog entry.
 
 **Dreams convention.** Each patient with a dream gets a file whose name matches the patient id. At load time, `loadMainAdventure()` in `src/config/index.ts` enumerates dream files via `import.meta.glob('./adventures/*.json')`, and for every patient id that matches a dream file, merges that file's `scenes`, `dialogs`, and `items` into the composed Adventure. The patient definition's existing `dreamScene` field is what links a patient to a scene in their merged dream. Dreams may also declare `initialState.inventory`; the field is reserved for forthcoming dream-scoped inventory work and is currently ignored.
 
-**Two file types, validated separately.** The mansion config (`main.json`) and dream configs (`adventures/<patient>.json`) are typed independently — `MansionConfig` and `DreamConfig` in [src/types.ts](src/types.ts) — and will evolve independently. Each file gets a per-file structural validator (`validateMansionConfig`, `validateDreamConfig` in [src/engine/validate.ts](src/engine/validate.ts)) that runs before the merge, rejects wrong-file fields, and surfaces required-field omissions. Both validators emit prefixed paths (e.g. `main.json:scenes`, `adventures/whitfield.json:dreams.whitfield.title`) so error attribution is unambiguous. The existing `validateAdventure` continues to validate the merged result for cross-cutting checks (reference resolution, action/condition payloads, etc.).
+**Case files convention.** Case files are authored separately from dream and mansion content. The mansion-wide case file lives at `src/config/main/cases.json` (markdown under `src/config/main/cases/*.md`). Per-patient case files live at `src/config/adventures/<patientId>.cases.json` (markdown under `src/config/adventures/<patientId>/*.md`). The loader resolves each document's `.md` path to its raw string content at load time (via `resolveMarkdown` in `src/engine/assets.ts`) and AND-s an implicit patient-availability gate (`inResidence | improving | healed`) onto every dream-sourced case's `availableIf`, so authors don't have to repeat that condition per entry. The engine exposes `availableCaseFiles` and `isDocumentAvailable(doc)`; the UI is in `CaseFilesModal.vue`.
 
-**Asset references in JSON.** Image-path strings in adventure JSON (e.g. `"background": "main/floor1.webp"`) are resolved by `src/engine/assets.ts`: `import.meta.glob` enumerates all images under `src/config/` so Vite bundles and hashes them. The path you write is the path relative to `src/config/`. Anything not found in the registry falls back to a `BASE_URL`-prefixed URL, so `public/` still works for non-config assets.
+**Three file types, validated separately.** The mansion config (`main.json`), dream configs (`adventures/<patient>.json`), and cases configs (`main/cases.json`, `adventures/<patient>.cases.json`) are typed independently — `MansionConfig`, `DreamConfig`, `CasesConfig` in [src/types.ts](src/types.ts) — and will evolve independently. Each file gets a per-file structural validator (`validateMansionConfig`, `validateDreamConfig`, `validateCasesConfig` in [src/engine/validate.ts](src/engine/validate.ts)) that runs before the merge, rejects wrong-file fields, and surfaces required-field omissions. Validators emit prefixed paths (e.g. `main.json:scenes`, `adventures/whitfield.json:dreams.whitfield.title`, `adventures/whitfield.cases.json:cases[0].id`) so error attribution is unambiguous. The existing `validateAdventure` continues to validate the merged result for cross-cutting checks (reference resolution, action/condition payloads, condition payloads on case `availableIf`, etc.).
+
+**Asset references in JSON.** Image-path strings in adventure JSON (e.g. `"background": "main/floor1.webp"`) are resolved by `src/engine/assets.ts`: `import.meta.glob` enumerates all images under `src/config/` so Vite bundles and hashes them. The path you write is the path relative to `src/config/`. Anything not found in the registry falls back to a `BASE_URL`-prefixed URL, so `public/` still works for non-config assets. A parallel glob with the `?raw` query handles markdown — `resolveMarkdown(path)` returns the bundled file content as a string, used by the case-files loader.
 
 ## Adventure JSON shape (essentials)
 
@@ -80,8 +86,6 @@ Authored content and its assets live under `src/config/`:
   "patients": {
     "whitfield": {
       "name": "Catherine Whitfield",
-      "presenting": "short summary",
-      "file": "longer file text",
       "dreamScene": "dreamSceneId",
       "maxSessions": 6
     }
@@ -139,6 +143,12 @@ Triggers are arbitrary string keys; the engine just runs whichever action list m
 
 1. Create `src/config/adventures/<patientId>.json` (the file name must match the patient id in `main.json`). Declare its `scenes` (the dream world's rooms) and any dream-only `dialogs`. Optionally declare `items` and `initialState.inventory` (the latter is reserved for forthcoming dream-scoped inventory work).
 2. Add a `patients.<patientId>` entry to `main.json` (or update an existing one) with `dreamScene` pointing to the entry scene id you just defined. No catalog edit needed — the loader picks the dream up automatically.
+
+### Add a case file
+
+1. **Mansion-wide cases.** Author `src/config/main/cases.json` with a `cases` array. Each case has `id` (globally unique), `label`, optional `subtitle`, optional `availableIf`, and a `documents` array. Each document has `id` (unique within the case), `label`, `path` (relative to `src/config/`), and optional `availableIf`. Co-locate the `.md` files under `src/config/main/cases/`.
+2. **Per-patient cases.** Author `src/config/adventures/<patientId>.cases.json` with the same shape. The loader AND-s in an implicit patient-availability gate so the case only appears once the patient is in residence / improving / healed. Co-locate `.md` files under `src/config/adventures/<patientId>/`.
+3. Both the tab in the header and the modal appear automatically when at least one case is available.
 
 ### Add a standalone adventure (e.g. another dev fixture)
 

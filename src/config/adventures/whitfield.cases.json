@@ -1,0 +1,26 @@
+{
+    "cases": [
+        {
+            "id": "whitfield",
+            "label": "Whitfield, C.",
+            "subtitle": "Concert pianist with debilitating stage fright.",
+            "documents": [
+                {
+                    "id": "intake",
+                    "label": "Intake",
+                    "path": "adventures/whitfield/case/intake.md"
+                },
+                {
+                    "id": "treatment-notes",
+                    "label": "Treatment Notes",
+                    "path": "adventures/whitfield/case/treatment-notes.md"
+                },
+                {
+                    "id": "excerpt",
+                    "label": "Transcript Excerpt",
+                    "path": "adventures/whitfield/case/excerpt.md"
+                }
+            ]
+        }
+    ]
+}

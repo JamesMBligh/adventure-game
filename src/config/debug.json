@@ -1,0 +1,63 @@
+{
+  "profiles": [
+    {
+      "id": "after-intro",
+      "label": "After Intro",
+      "description": "Skip the intro sequence. Land at the mansion's first floor.",
+      "flags": {
+        "introCompleted": true
+      }
+    },
+    {
+      "id": "ready-for-session",
+      "label": "Ready for Session",
+      "description": "Intro done, offer accepted, file examined. Whitfield is in residence; her case file is in the modal. Click the treatment room to enter her dream.",
+      "flags": {
+        "introCompleted": true,
+        "introDialogComplete": true,
+        "examinedFile": true
+      },
+      "patients": {
+        "whitfield": {
+          "status": "inResidence"
+        }
+      }
+    },
+    {
+      "id": "after-session",
+      "label": "After Session",
+      "description": "Whitfield session complete with the corridor walked. Ready for the debrief.",
+      "flags": {
+        "introCompleted": true,
+        "introDialogComplete": true,
+        "examinedFile": true,
+        "sessionCompleted": true,
+        "walkedCorridor": true
+      },
+      "patients": {
+        "whitfield": {
+          "status": "inResidence",
+          "sessionsCompleted": 1
+        }
+      }
+    },
+    {
+      "id": "in-whitfield-dream",
+      "label": "In Whitfield's Dream",
+      "description": "Boot straight onto the concert-hall stage in Whitfield's dream. Walk left into the wings, speak to Catherine, walk the corridor, then speak the exit phrase to wake.",
+      "flags": {
+        "introCompleted": true,
+        "introDialogComplete": true,
+        "examinedFile": true
+      },
+      "patients": {
+        "whitfield": {
+          "status": "inResidence",
+          "sessionsCompleted": 1
+        }
+      },
+      "startScene": "whitfield_stage",
+      "activePatient": "whitfield"
+    }
+  ]
+}

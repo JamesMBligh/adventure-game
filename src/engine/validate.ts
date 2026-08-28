@@ -1,10 +1,11 @@
-import type { Action, Adventure, Condition } from '../types';
+import type { Action, Adventure, Condition, Point } from '../types';
 import {
   actionRegistry,
   actionValidatorRegistry,
   conditionRegistry,
   conditionValidatorRegistry,
 } from './registry';
+import { polygonSelfIntersects } from './sceneObjects';
 
 export interface AdventureValidationError {
   path: string;
@@ -60,10 +61,154 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
     walkActions(scene.onExit, `scenes.${sceneId}.onExit`, errors, adventure);
     for (const obj of scene.objects ?? []) {
       const objPath = `scenes.${sceneId}.objects[${obj.id}]`;
+      // Anchor coords are required (numbers).
+      if (typeof obj.x !== 'number') {
+        errors.push({ path: `${objPath}.x`, message: 'x must be a number (anchor in % of scene)' });
+      }
+      if (typeof obj.y !== 'number') {
+        errors.push({ path: `${objPath}.y`, message: 'y must be a number (anchor in % of scene)' });
+      }
+      // Reject legacy fields outright so unmigrated content surfaces clearly.
+      const legacy = obj as unknown as Record<string, unknown>;
+      if ('rect' in legacy) {
+        errors.push({
+          path: `${objPath}.rect`,
+          message: 'top-level "rect" is no longer supported — use x/y plus display/hit blocks',
+        });
+      }
+      if ('color' in legacy) {
+        errors.push({
+          path: `${objPath}.color`,
+          message: 'top-level "color" is no longer supported — move it into display.color',
+        });
+      }
+      if ('image' in legacy) {
+        errors.push({
+          path: `${objPath}.image`,
+          message: 'top-level "image" is no longer supported — move it into display.image',
+        });
+      }
+      // Display block: must declare exactly one of `rect` or `place`.
+      // Cast through unknown — the static type would otherwise lie about
+      // malformed on-the-wire shapes that the validator is here to catch.
+      if (obj.display) {
+        const d = obj.display as unknown as Record<string, unknown>;
+        const hasRect = d.rect !== undefined;
+        const hasPlace = d.place !== undefined;
+        if (hasRect && hasPlace) {
+          errors.push({
+            path: `${objPath}.display`,
+            message: 'display cannot specify both "rect" and "place" — pick one',
+          });
+        } else if (!hasRect && !hasPlace) {
+          errors.push({
+            path: `${objPath}.display`,
+            message: 'display must specify either "rect" or "place"',
+          });
+        }
+        if (hasRect) {
+          if (typeof d.rect !== 'object' || d.rect === null) {
+            errors.push({
+              path: `${objPath}.display.rect`,
+              message: 'display.rect must be an object with w, h, and optional x, y',
+            });
+          } else {
+            validateRectShape(d.rect as Record<string, unknown>, `${objPath}.display.rect`, errors);
+          }
+        }
+        if (hasPlace) {
+          validatePlaceShape(d.place, `${objPath}.display.place`, errors);
+          // place positions the image at natural pixel size + scale; it has
+          // no meaning without an image to position.
+          if (d.image === undefined) {
+            errors.push({
+              path: `${objPath}.display.image`,
+              message: 'display.image is required when display.place is used',
+            });
+          }
+        }
+        if (d.color !== undefined && typeof d.color !== 'string') {
+          errors.push({ path: `${objPath}.display.color`, message: 'display.color must be a string when provided' });
+        }
+        if (d.image !== undefined && typeof d.image !== 'string') {
+          errors.push({ path: `${objPath}.display.image`, message: 'display.image must be a string when provided' });
+        }
+      }
+      // Hit block: exactly one of rect / path / ellipsis. Highlight is an
+      // optional boolean.
+      if (obj.hit) {
+        const h = obj.hit as unknown as Record<string, unknown>;
+        const hasRect = h.rect !== undefined;
+        const hasPath = h.path !== undefined;
+        const hasEllipsis = h.ellipsis !== undefined;
+        const kindCount = (hasRect ? 1 : 0) + (hasPath ? 1 : 0) + (hasEllipsis ? 1 : 0);
+        if (kindCount > 1) {
+          errors.push({
+            path: `${objPath}.hit`,
+            message: 'hit must specify exactly one of "rect", "path", or "ellipsis"',
+          });
+        } else if (kindCount === 0) {
+          errors.push({
+            path: `${objPath}.hit`,
+            message: 'hit must specify one of "rect", "path", or "ellipsis"',
+          });
+        }
+        if (hasRect) {
+          if (typeof h.rect !== 'object' || h.rect === null) {
+            errors.push({
+              path: `${objPath}.hit.rect`,
+              message: 'hit.rect must be an object with w, h, and optional x, y',
+            });
+          } else {
+            validateRectShape(h.rect as Record<string, unknown>, `${objPath}.hit.rect`, errors);
+          }
+        }
+        if (hasPath) {
+          validatePathShape(h.path, `${objPath}.hit.path`, errors);
+        }
+        if (hasEllipsis) {
+          if (typeof h.ellipsis !== 'object' || h.ellipsis === null) {
+            errors.push({
+              path: `${objPath}.hit.ellipsis`,
+              message: 'hit.ellipsis must be an object with w, h, and optional x, y',
+            });
+          } else {
+            validateRectShape(
+              h.ellipsis as Record<string, unknown>,
+              `${objPath}.hit.ellipsis`,
+              errors,
+            );
+          }
+        }
+        if (h.highlight !== undefined && typeof h.highlight !== 'boolean') {
+          errors.push({
+            path: `${objPath}.hit.highlight`,
+            message: 'hit.highlight must be a boolean when provided',
+          });
+        }
+      }
       if (obj.visibleIf) walkCondition(obj.visibleIf, `${objPath}.visibleIf`, errors, adventure);
       for (const [trigger, actions] of Object.entries(obj.triggers ?? {})) {
         walkActions(actions, `${objPath}.triggers.${trigger}`, errors, adventure);
       }
+      (obj.menu ?? []).forEach((item, i) => {
+        const itemPath = `${objPath}.menu[${i}]`;
+        if (typeof item.label !== 'string' || !item.label) {
+          errors.push({
+            path: `${itemPath}.label`,
+            message: 'menu item label must be a non-empty string',
+          });
+        }
+        if (item.visibleIf) walkCondition(item.visibleIf, `${itemPath}.visibleIf`, errors, adventure);
+        if (!Array.isArray(item.actions)) {
+          errors.push({
+            path: `${itemPath}.actions`,
+            message: 'menu item actions must be an array',
+          });
+        } else {
+          walkActions(item.actions, `${itemPath}.actions`, errors, adventure);
+        }
+      });
     }
   }
 
@@ -125,11 +270,113 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
         message: `location "${interaction.location}" is not defined on any site`,
       });
     }
-    if (interaction.dialog && !dialogs[interaction.dialog]) {
-      errors.push({
-        path: `${path}.dialog`,
-        message: `dialog "${interaction.dialog}" is not defined`,
-      });
+    if (interaction.dialog !== undefined) {
+      if (typeof interaction.dialog !== 'object' || interaction.dialog === null) {
+        errors.push({
+          path: `${path}.dialog`,
+          message: 'interaction.dialog must be an inline Dialog object',
+        });
+      } else if (interaction.dialog.id !== undefined && typeof interaction.dialog.id !== 'string') {
+        // `id` is optional — the loader auto-allocates one when omitted —
+        // but if it IS provided it must be a non-empty string.
+        errors.push({
+          path: `${path}.dialog.id`,
+          message: 'inline dialog "id" must be a string when provided',
+        });
+      } else if (typeof interaction.dialog.id === 'string' && interaction.dialog.id.length === 0) {
+        errors.push({
+          path: `${path}.dialog.id`,
+          message: 'inline dialog "id" must be a non-empty string when provided',
+        });
+      }
+      // Structural validation (start node exists, nodes well-formed, choice
+      // references valid) is handled by the dialogs map walk below — the loader
+      // registers inline interaction dialogs into adventure.dialogs.
+    }
+    if (interaction.overlays !== undefined) {
+      if (!Array.isArray(interaction.overlays)) {
+        errors.push({ path: `${path}.overlays`, message: 'overlays must be an array of Overlay' });
+      } else {
+        const seenIds = new Set<string>();
+        interaction.overlays.forEach((o, i) => {
+          const oPath = `${path}.overlays[${i}]`;
+          if (!o || typeof o !== 'object') {
+            errors.push({ path: oPath, message: 'overlay must be an object' });
+            return;
+          }
+          if (typeof o.id !== 'string' || !o.id) {
+            errors.push({ path: `${oPath}.id`, message: 'overlay id must be a non-empty string' });
+          } else if (seenIds.has(o.id)) {
+            errors.push({
+              path: `${oPath}.id`,
+              message: `duplicate overlay id "${o.id}" within this interaction`,
+            });
+          } else {
+            seenIds.add(o.id);
+          }
+          if (typeof o.image !== 'string' || !o.image) {
+            errors.push({ path: `${oPath}.image`, message: 'overlay image must be a non-empty string' });
+          }
+          if (o.transition !== undefined && o.transition !== 'fade') {
+            errors.push({
+              path: `${oPath}.transition`,
+              message: 'overlay transition must be "fade" if provided',
+            });
+          }
+          if (o.z !== undefined && typeof o.z !== 'number') {
+            errors.push({
+              path: `${oPath}.z`,
+              message: 'overlay z must be a number if provided',
+            });
+          }
+          if (o.rect !== undefined) {
+            if (!o.rect || typeof o.rect !== 'object') {
+              errors.push({
+                path: `${oPath}.rect`,
+                message: 'overlay rect must be an object { x, y, w, h }',
+              });
+            } else {
+              const r = o.rect as unknown as Record<string, unknown>;
+              for (const k of ['x', 'y', 'w', 'h'] as const) {
+                if (typeof r[k] !== 'number') {
+                  errors.push({
+                    path: `${oPath}.rect.${k}`,
+                    message: 'overlay rect.x/y/w/h must be numbers',
+                  });
+                }
+              }
+            }
+          }
+          if (o.place !== undefined) {
+            if (!o.place || typeof o.place !== 'object') {
+              errors.push({
+                path: `${oPath}.place`,
+                message: 'overlay place must be an object { top, left, scale? }',
+              });
+            } else {
+              const p = o.place as unknown as Record<string, unknown>;
+              if (typeof p.top !== 'number') {
+                errors.push({ path: `${oPath}.place.top`, message: 'place.top must be a number' });
+              }
+              if (typeof p.left !== 'number') {
+                errors.push({ path: `${oPath}.place.left`, message: 'place.left must be a number' });
+              }
+              if (p.scale !== undefined && typeof p.scale !== 'number') {
+                errors.push({
+                  path: `${oPath}.place.scale`,
+                  message: 'place.scale must be a number if provided',
+                });
+              }
+            }
+          }
+          if (o.rect !== undefined && o.place !== undefined) {
+            errors.push({
+              path: oPath,
+              message: 'overlay cannot specify both "rect" and "place" — pick one',
+            });
+          }
+        });
+      }
     }
     (interaction.conditions ?? []).forEach((cond, ci) =>
       walkCondition(cond, `${path}.conditions[${ci}]`, errors, adventure),
@@ -150,6 +397,23 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
       if (typeof node.text !== 'string' || !node.text) {
         errors.push({ path: `${nodePath}.text`, message: 'node text must be a non-empty string' });
       }
+      if (node.onEnter) walkActions(node.onEnter, `${nodePath}.onEnter`, errors, adventure);
+
+      // A node must define exactly one of `choices` or `nochoice`.
+      const hasChoices = Array.isArray(node.choices);
+      const hasNochoice = node.nochoice !== undefined && node.nochoice !== null;
+      if (hasChoices && hasNochoice) {
+        errors.push({
+          path: nodePath,
+          message: 'node must define either `choices` or `nochoice`, not both',
+        });
+      } else if (!hasChoices && !hasNochoice) {
+        errors.push({
+          path: nodePath,
+          message: 'node must define exactly one of `choices` or `nochoice`',
+        });
+      }
+
       (node.choices ?? []).forEach((choice, i) => {
         const cPath = `${nodePath}.choices[${i}]`;
         if (typeof choice.text !== 'string' || !choice.text) {
@@ -165,6 +429,27 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
           });
         }
       });
+
+      if (node.nochoice) {
+        const ncPath = `${nodePath}.nochoice`;
+        const nc = node.nochoice;
+        if (nc.text !== undefined && typeof nc.text !== 'string') {
+          errors.push({ path: `${ncPath}.text`, message: 'nochoice.text must be a string when provided' });
+        }
+        if (nc.visibleIf) {
+          errors.push({
+            path: `${ncPath}.visibleIf`,
+            message: 'nochoice cannot have `visibleIf` — it fires unconditionally',
+          });
+        }
+        if (nc.actions) walkActions(nc.actions, `${ncPath}.actions`, errors, adventure);
+        if (nc.next && !dialog.nodes[nc.next]) {
+          errors.push({
+            path: `${ncPath}.next`,
+            message: `next node "${nc.next}" is not defined`,
+          });
+        }
+      }
     }
   }
 
@@ -176,6 +461,25 @@ export function validateAdventure(adventure: Adventure): AdventureValidationErro
       });
     }
   }
+
+  // Case files: walk every `availableIf` so unknown condition types and
+  // bad payloads surface here too. The loader is responsible for case-id
+  // uniqueness; we still double-check it for defence in depth.
+  const caseFiles = adventure.caseFiles ?? [];
+  const seenCaseIds = new Set<string>();
+  caseFiles.forEach((c, i) => {
+    const cPath = `caseFiles[${i}]`;
+    if (seenCaseIds.has(c.id)) {
+      errors.push({ path: `${cPath}.id`, message: `duplicate case id "${c.id}"` });
+    } else {
+      seenCaseIds.add(c.id);
+    }
+    if (c.availableIf) walkCondition(c.availableIf, `${cPath}.availableIf`, errors, adventure);
+    c.documents.forEach((d, di) => {
+      const dPath = `${cPath}.documents[${di}]`;
+      if (d.availableIf) walkCondition(d.availableIf, `${dPath}.availableIf`, errors, adventure);
+    });
+  });
 
   for (const [flagName, def] of Object.entries(flags)) {
     if (def === null || typeof def !== 'object') {
@@ -244,6 +548,8 @@ function walkAction(
     walkActions(action.actions as Action[], `${path}.actions`, errors, adventure);
   } else if (action.type === 'speakExitPhrase' && Array.isArray(action.onWrong)) {
     walkActions(action.onWrong as Action[], `${path}.onWrong`, errors, adventure);
+  } else if (action.type === 'dreamTransition' && Array.isArray(action.actions)) {
+    walkActions(action.actions as Action[], `${path}.actions`, errors, adventure);
   }
 }
 
@@ -282,6 +588,103 @@ function walkCondition(
   }
 }
 
+/** Shared rect-shape validator used by display/hit blocks on SceneObject and
+ *  anywhere else the engine accepts a Rect on the wire. `w` and `h` must be
+ *  numbers; `x` and `y` are optional but must be numbers when present. */
+function validateRectShape(
+  rect: Record<string, unknown>,
+  path: string,
+  errors: AdventureValidationError[],
+): void {
+  if (typeof rect.w !== 'number') {
+    errors.push({ path: `${path}.w`, message: 'w must be a number' });
+  }
+  if (typeof rect.h !== 'number') {
+    errors.push({ path: `${path}.h`, message: 'h must be a number' });
+  }
+  if (rect.x !== undefined && typeof rect.x !== 'number') {
+    errors.push({ path: `${path}.x`, message: 'x must be a number when provided' });
+  }
+  if (rect.y !== undefined && typeof rect.y !== 'number') {
+    errors.push({ path: `${path}.y`, message: 'y must be a number when provided' });
+  }
+}
+
+/**
+ * Shape + geometry check for a hit-region polygon path. Requires at least
+ * three vertices, all with numeric x and y. The closed polygon (implicit
+ * edge from last vertex back to first) must not self-intersect.
+ */
+function validatePathShape(
+  path: unknown,
+  pathLabel: string,
+  errors: AdventureValidationError[],
+): void {
+  if (!Array.isArray(path)) {
+    errors.push({ path: pathLabel, message: 'hit.path must be an array of points' });
+    return;
+  }
+  if (path.length < 3) {
+    errors.push({
+      path: pathLabel,
+      message: 'hit.path must contain at least 3 points',
+    });
+    return;
+  }
+  const pts: Point[] = [];
+  let allValid = true;
+  path.forEach((p, i) => {
+    const point = p as unknown as Record<string, unknown>;
+    if (!point || typeof point !== 'object') {
+      errors.push({ path: `${pathLabel}[${i}]`, message: 'path point must be an object { x, y }' });
+      allValid = false;
+      return;
+    }
+    if (typeof point.x !== 'number') {
+      errors.push({ path: `${pathLabel}[${i}].x`, message: 'x must be a number' });
+      allValid = false;
+    }
+    if (typeof point.y !== 'number') {
+      errors.push({ path: `${pathLabel}[${i}].y`, message: 'y must be a number' });
+      allValid = false;
+    }
+    if (typeof point.x === 'number' && typeof point.y === 'number') {
+      pts.push({ x: point.x, y: point.y });
+    }
+  });
+  if (!allValid) return;
+  if (polygonSelfIntersects(pts)) {
+    errors.push({
+      path: pathLabel,
+      message: 'hit.path polygon self-intersects (including the implicit closing edge)',
+    });
+  }
+}
+
+/** Shape check for an `OverlayPlace`: `top` and `left` required numbers,
+ *  `scale` optional number (defaults to 100 when omitted). Used by the
+ *  scene-object display block validator. */
+function validatePlaceShape(
+  place: unknown,
+  path: string,
+  errors: AdventureValidationError[],
+): void {
+  if (!place || typeof place !== 'object') {
+    errors.push({ path, message: 'place must be an object { top, left, scale? }' });
+    return;
+  }
+  const p = place as Record<string, unknown>;
+  if (typeof p.top !== 'number') {
+    errors.push({ path: `${path}.top`, message: 'place.top must be a number' });
+  }
+  if (typeof p.left !== 'number') {
+    errors.push({ path: `${path}.left`, message: 'place.left must be a number' });
+  }
+  if (p.scale !== undefined && typeof p.scale !== 'number') {
+    errors.push({ path: `${path}.scale`, message: 'place.scale must be a number when provided' });
+  }
+}
+
 export function formatValidationErrors(errors: AdventureValidationError[]): string {
   return errors.map((e) => `  ${e.path}: ${e.message}`).join('\n');
 }
@@ -301,6 +704,7 @@ const MANSION_FORBIDDEN: ReadonlyArray<readonly [string, string]> = [
   ['scenes', 'scenes belong in dream files (src/config/adventures/<patient>.json)'],
   ['items', 'items belong in dream files; the mansion has no inventory'],
   ['startScene', 'startScene is not used in mansion configs (use startSite)'],
+  ['dialogs', 'mansion dialogs are declared inline on the owning interaction (interaction.dialog), not in a top-level dialogs map'],
 ];
 
 const DREAM_FORBIDDEN: ReadonlyArray<readonly [string, string]> = [
@@ -376,5 +780,87 @@ export function validateDreamConfig(
   for (const [field, reason] of DREAM_FORBIDDEN) {
     if (field in config) errors.push({ path: `${prefix}.${field}`, message: reason });
   }
+  return errors;
+}
+
+/**
+ * Validate a cases config file (src/config/main/cases.json or
+ * src/config/adventures/<patientId>.cases.json) for structural shape only.
+ * Checks required fields and within-file id uniqueness. Cross-file uniqueness
+ * and condition payloads are validated downstream (loader + validateAdventure).
+ */
+export function validateCasesConfig(config: unknown): AdventureValidationError[] {
+  const errors: AdventureValidationError[] = [];
+  if (!isPlainObject(config)) {
+    errors.push({ path: '', message: 'cases config must be an object' });
+    return errors;
+  }
+  if (!Array.isArray(config.cases) || config.cases.length === 0) {
+    errors.push({ path: 'cases', message: 'cases is required (non-empty array)' });
+    return errors;
+  }
+
+  const seenCaseIds = new Set<string>();
+  config.cases.forEach((entry, i) => {
+    const cPath = `cases[${i}]`;
+    if (!isPlainObject(entry)) {
+      errors.push({ path: cPath, message: 'case entry must be an object' });
+      return;
+    }
+    if (typeof entry.id !== 'string' || !entry.id) {
+      errors.push({ path: `${cPath}.id`, message: 'id is required (non-empty string)' });
+    } else if (seenCaseIds.has(entry.id)) {
+      errors.push({ path: `${cPath}.id`, message: `duplicate case id "${entry.id}" in this file` });
+    } else {
+      seenCaseIds.add(entry.id);
+    }
+    if (typeof entry.label !== 'string' || !entry.label) {
+      errors.push({ path: `${cPath}.label`, message: 'label is required (non-empty string)' });
+    }
+    if (entry.subtitle !== undefined && typeof entry.subtitle !== 'string') {
+      errors.push({ path: `${cPath}.subtitle`, message: 'subtitle must be a string when provided' });
+    }
+    if (entry.availableIf !== undefined && !isPlainObject(entry.availableIf)) {
+      errors.push({ path: `${cPath}.availableIf`, message: 'availableIf must be a Condition object' });
+    }
+    if (!Array.isArray(entry.documents) || entry.documents.length === 0) {
+      errors.push({
+        path: `${cPath}.documents`,
+        message: 'documents is required (non-empty array)',
+      });
+      return;
+    }
+    const seenDocIds = new Set<string>();
+    entry.documents.forEach((doc, di) => {
+      const dPath = `${cPath}.documents[${di}]`;
+      if (!isPlainObject(doc)) {
+        errors.push({ path: dPath, message: 'document entry must be an object' });
+        return;
+      }
+      if (typeof doc.id !== 'string' || !doc.id) {
+        errors.push({ path: `${dPath}.id`, message: 'id is required (non-empty string)' });
+      } else if (seenDocIds.has(doc.id)) {
+        errors.push({
+          path: `${dPath}.id`,
+          message: `duplicate document id "${doc.id}" within case`,
+        });
+      } else {
+        seenDocIds.add(doc.id);
+      }
+      if (typeof doc.label !== 'string' || !doc.label) {
+        errors.push({ path: `${dPath}.label`, message: 'label is required (non-empty string)' });
+      }
+      if (typeof doc.path !== 'string' || !doc.path) {
+        errors.push({ path: `${dPath}.path`, message: 'path is required (non-empty string)' });
+      }
+      if (doc.availableIf !== undefined && !isPlainObject(doc.availableIf)) {
+        errors.push({
+          path: `${dPath}.availableIf`,
+          message: 'availableIf must be a Condition object',
+        });
+      }
+    });
+  });
+
   return errors;
 }

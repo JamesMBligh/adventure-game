@@ -33,6 +33,7 @@ function handleExit() {
     :adventure="activeAdventure"
     :adventure-id="activeEntry?.id ?? 'unknown'"
     :resume-from="resumeFrom"
+    :no-autosave="activeEntry?.noAutosave === true"
     @exit="handleExit"
   />
 </template>

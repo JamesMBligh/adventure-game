@@ -1,234 +1,658 @@
 {
-  "title": "The Cabin in the Clearing",
-  "startScene": "clearing",
-  "initialState": {
-    "flags": {},
-    "inventory": []
-  },
-  "items": {
-    "key": {
-      "name": "Brass Key",
-      "description": "A small brass key, tarnished with age."
+    "title": "The Cabin in the Clearing",
+    "startScene": "clearing",
+    "flags": {
+        "doorUnlocked": {
+            "default": false,
+            "description": "The brass key has been used in the front door."
+        },
+        "visitedInterior": {
+            "default": false,
+            "description": "Player has entered the cabin interior at least once."
+        },
+        "readNote": {
+            "default": false,
+            "description": "Player has read the note on the writing desk."
+        }
     },
-    "lantern": {
-      "name": "Oil Lantern",
-      "description": "A dented lantern. Still has fuel."
-    }
-  },
-  "scenes": {
-    "clearing": {
-      "name": "Clearing",
-      "background": "#2c2030",
-      "description": "You stand in a moonlit clearing. A small wooden cabin slumps against a thicket of pines. A path leads back into the dark woods.",
-      "objects": [
-        {
-          "id": "cabin-door",
-          "name": "Cabin Door",
-          "rect": { "x": 42, "y": 30, "w": 16, "h": 50 },
-          "color": "rgba(140, 90, 50, 0.55)",
-          "triggers": {
-            "onHover": [
-              { "type": "narrate", "text": "A heavy wooden door, banded with iron. There is a brass keyhole." }
-            ],
-            "onClick": [
-              {
-                "type": "if",
-                "condition": { "type": "flag", "flag": "doorUnlocked" },
-                "then": [
-                  { "type": "narrate", "text": "The door swings inward on protesting hinges." },
-                  { "type": "goto", "scene": "interior" }
-                ],
-                "else": [
-                  {
-                    "type": "if",
-                    "condition": { "type": "hasItem", "item": "key" },
-                    "then": [
-                      { "type": "narrate", "text": "The brass key fits the lock. It turns with a soft, dry click." },
-                      { "type": "setFlag", "flag": "doorUnlocked", "value": true }
-                    ],
-                    "else": [
-                      { "type": "narrate", "text": "The door is locked. The keyhole is too small for your finger." }
+    "items": {
+        "key": {
+            "name": "Brass Key",
+            "description": "A small brass key, tarnished with age."
+        },
+        "lantern": {
+            "name": "Oil Lantern",
+            "description": "A dented lantern. Still has fuel."
+        }
+    },
+    "scenes": {
+        "clearing": {
+            "name": "Clearing",
+            "kind": "hub",
+            "background": "adventures/cabin/clearing.svg",
+            "description": "You stand in a moonlit clearing. A small wooden cabin slumps against a thicket of pines. A path leads back into the dark woods.",
+            "objects": [
+                {
+                    "id": "cabin-door",
+                    "name": "Cabin Door",
+                    "x": 42,
+                    "y": 30,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 16,
+                            "h": 50
+                        },
+                        "image": "adventures/cabin/door.svg"
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "A heavy wooden door, banded with iron. There is a brass keyhole."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Open the door",
+                            "actions": [
+                                {
+                                    "type": "if",
+                                    "condition": {
+                                        "type": "flag",
+                                        "flag": "doorUnlocked"
+                                    },
+                                    "then": [
+                                        {
+                                            "type": "narrate",
+                                            "text": "The door swings inward on protesting hinges."
+                                        },
+                                        {
+                                            "type": "goto",
+                                            "scene": "interior"
+                                        }
+                                    ],
+                                    "else": [
+                                        {
+                                            "type": "if",
+                                            "condition": {
+                                                "type": "hasItem",
+                                                "item": "key"
+                                            },
+                                            "then": [
+                                                {
+                                                    "type": "narrate",
+                                                    "text": "The brass key fits the lock. It turns with a soft, dry click."
+                                                },
+                                                {
+                                                    "type": "setFlag",
+                                                    "flag": "doorUnlocked",
+                                                    "value": true
+                                                }
+                                            ],
+                                            "else": [
+                                                {
+                                                    "type": "narrate",
+                                                    "text": "The door is locked. The keyhole is too small for your finger."
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
                     ]
-                  }
-                ]
-              }
+                },
+                {
+                    "id": "rock",
+                    "name": "Loose Stone",
+                    "x": 12,
+                    "y": 78,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 9,
+                            "h": 10
+                        },
+                        "image": "adventures/cabin/stone.svg"
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "A flat stone near the cabin's foundations. It looks recently disturbed."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Lift the stone",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "You lift the stone. Beneath it, half-buried, a brass key glints in the moonlight."
+                                },
+                                {
+                                    "type": "addItem",
+                                    "item": "key"
+                                },
+                                {
+                                    "type": "hideObject"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "path",
+                    "name": "Forest Path",
+                    "x": 75,
+                    "y": 60,
+                    "hit": {
+                        "path": [
+                            {
+                                "x": 25,
+                                "y": 0
+                            },
+                            {
+                                "x": 25,
+                                "y": 40
+                            },
+                            {
+                                "x": 0,
+                                "y": 40
+                            }
+                        ]
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "The path winds away into the trees. You came from there."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Take the path",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "You're not ready to leave yet — there's something here you must understand."
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "window",
+                    "name": "Cabin Window",
+                    "x": 58,
+                    "y": 33,
+                    "display": {
+                        "image": "adventures/cabin/window.svg",
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 25,
+                            "h": 25
+                        }
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "A window, fogged from the inside. Something flickers within — a candle?"
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Look through the window",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "You press your face to the glass. A single candle burns on a table you cannot quite see."
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "moonwell",
+                    "name": "Moonwell",
+                    "x": 25,
+                    "y": 75,
+                    "display": {
+                        "place": {
+                            "top": 0,
+                            "left": 0,
+                            "scale": 20
+                        },
+                        "image": "adventures/cabin/pool.png"
+                    },
+                    "hit": {
+                        "ellipsis": {
+                            "x": 1,
+                            "y": 12,
+                            "w": 17,
+                            "h": 9.5
+                        }
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "A still pool of moonlight in the grass. It seems to pull at the eye."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Step into the moonwell",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "You step into the moonwell. The clearing spirals away."
+                                },
+                                {
+                                    "type": "dreamTransition",
+                                    "direction": "entering",
+                                    "actions": [
+                                        {
+                                            "type": "setFlag",
+                                            "flag": "visitedInterior",
+                                            "value": true
+                                        },
+                                        {
+                                            "type": "goto",
+                                            "scene": "interior"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
             ]
-          }
         },
-        {
-          "id": "rock",
-          "name": "Loose Stone",
-          "rect": { "x": 12, "y": 78, "w": 9, "h": 10 },
-          "color": "rgba(120, 120, 120, 0.4)",
-          "triggers": {
-            "onHover": [
-              { "type": "narrate", "text": "A flat stone near the cabin's foundations. It looks recently disturbed." }
+        "interior": {
+            "name": "Inside the Cabin",
+            "kind": "dream",
+            "background": "#1a1018",
+            "description": "Inside, the air is dry and smells of old paper. A single candle gutters on a writing desk. A lantern hangs from a hook by the door.",
+            "onEnter": [
+                {
+                    "type": "if",
+                    "condition": {
+                        "type": "not",
+                        "condition": {
+                            "type": "flag",
+                            "flag": "visitedInterior"
+                        }
+                    },
+                    "then": [
+                        {
+                            "type": "narrate",
+                            "speaker": "A voice",
+                            "kind": "dialog",
+                            "text": "You came. I was beginning to wonder."
+                        },
+                        {
+                            "type": "setFlag",
+                            "flag": "visitedInterior",
+                            "value": true
+                        }
+                    ]
+                }
             ],
-            "onClick": [
-              { "type": "narrate", "text": "You lift the stone. Beneath it, half-buried, a brass key glints in the moonlight." },
-              { "type": "addItem", "item": "key" },
-              { "type": "hideObject" }
+            "objects": [
+                {
+                    "id": "lantern-hook",
+                    "name": "Lantern",
+                    "x": 8,
+                    "y": 30,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 9,
+                            "h": 22
+                        },
+                        "color": "rgba(240, 200, 80, 0.3)"
+                    },
+                    "visibleIf": {
+                        "type": "not",
+                        "condition": {
+                            "type": "hasItem",
+                            "item": "lantern"
+                        }
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "An oil lantern on a hook. It looks heavy with fuel."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Take the lantern",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "You lift the lantern from its hook."
+                                },
+                                {
+                                    "type": "addItem",
+                                    "item": "lantern"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "desk",
+                    "name": "Writing Desk",
+                    "x": 35,
+                    "y": 50,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 30,
+                            "h": 30
+                        },
+                        "color": "rgba(120, 80, 40, 0.45)"
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "An old writing desk. A single sheet of paper rests on it, face down."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Read the note",
+                            "actions": [
+                                {
+                                    "type": "if",
+                                    "condition": {
+                                        "type": "flag",
+                                        "flag": "readNote"
+                                    },
+                                    "then": [
+                                        {
+                                            "type": "narrate",
+                                            "text": "The note still reads: \"Bring the lantern to the cellar.\""
+                                        }
+                                    ],
+                                    "else": [
+                                        {
+                                            "type": "narrate",
+                                            "text": "You turn the page over. The handwriting is hurried."
+                                        },
+                                        {
+                                            "type": "narrate",
+                                            "kind": "dialog",
+                                            "speaker": "The Note",
+                                            "text": "Bring the lantern to the cellar."
+                                        },
+                                        {
+                                            "type": "setFlag",
+                                            "flag": "readNote",
+                                            "value": true
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "exit",
+                    "name": "Door (out)",
+                    "x": 80,
+                    "y": 25,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 14,
+                            "h": 60
+                        },
+                        "color": "rgba(140, 90, 50, 0.35)"
+                    },
+                    "menu": [
+                        {
+                            "label": "Leave the cabin",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "You step back out into the cool night."
+                                },
+                                {
+                                    "type": "goto",
+                                    "scene": "clearing"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "looking-glass",
+                    "name": "Looking Glass",
+                    "x": 18,
+                    "y": 55,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 12,
+                            "h": 24
+                        },
+                        "color": "rgba(200, 220, 240, 0.18)"
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "A small hand mirror, propped on a shelf. Its surface seems… reluctant."
+                                },
+                                {
+                                    "type": "narrate",
+                                    "text": "Your reflection holds your eye for a moment longer than it should."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Hold the lantern up to it",
+                            "visibleIf": {
+                                "type": "hasItem",
+                                "item": "lantern"
+                            },
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "The lantern's flame doubles in the glass and then trebles — light multiplying through some other geometry."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Step through",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "You meet your reflection. The cabin draws back from you, and you wake."
+                                },
+                                {
+                                    "type": "dreamTransition",
+                                    "direction": "exiting",
+                                    "actions": [
+                                        {
+                                            "type": "goto",
+                                            "scene": "clearing"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "trapdoor",
+                    "name": "Trapdoor",
+                    "x": 40,
+                    "y": 82,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 18,
+                            "h": 12
+                        },
+                        "color": "rgba(60, 40, 20, 0.6)"
+                    },
+                    "visibleIf": {
+                        "type": "flag",
+                        "flag": "readNote"
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "A trapdoor set into the floor. You hadn't noticed it before."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Open the trapdoor",
+                            "actions": [
+                                {
+                                    "type": "if",
+                                    "condition": {
+                                        "type": "hasItem",
+                                        "item": "lantern"
+                                    },
+                                    "then": [
+                                        {
+                                            "type": "narrate",
+                                            "text": "You light the lantern and descend."
+                                        },
+                                        {
+                                            "type": "goto",
+                                            "scene": "cellar"
+                                        }
+                                    ],
+                                    "else": [
+                                        {
+                                            "type": "narrate",
+                                            "text": "Stairs disappear into pitch black. You'll need a light."
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
             ]
-          }
         },
-        {
-          "id": "path",
-          "name": "Forest Path",
-          "rect": { "x": 75, "y": 60, "w": 22, "h": 35 },
-          "color": "rgba(40, 30, 60, 0.4)",
-          "triggers": {
-            "onHover": [
-              { "type": "narrate", "text": "The path winds away into the trees. You came from there." }
-            ],
-            "onClick": [
-              { "type": "narrate", "text": "You're not ready to leave yet — there's something here you must understand." }
+        "cellar": {
+            "name": "The Cellar",
+            "kind": "dream",
+            "background": "#0c0810",
+            "description": "Lantern-light spills across earthen walls. At the far end of the cellar, someone is waiting — but that, perhaps, is a story for another scene.",
+            "objects": [
+                {
+                    "id": "stairs-up",
+                    "name": "Stairs Up",
+                    "x": 78,
+                    "y": 20,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 18,
+                            "h": 70
+                        },
+                        "color": "rgba(80, 60, 40, 0.4)"
+                    },
+                    "menu": [
+                        {
+                            "label": "Climb the stairs",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "You climb back up to the cabin."
+                                },
+                                {
+                                    "type": "goto",
+                                    "scene": "interior"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "figure",
+                    "name": "Waiting Figure",
+                    "x": 20,
+                    "y": 35,
+                    "display": {
+                        "rect": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 18,
+                            "h": 50
+                        },
+                        "color": "rgba(180, 180, 220, 0.15)"
+                    },
+                    "menu": [
+                        {
+                            "label": "Examine",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "text": "The figure does not move. The lantern-light slides off them like water."
+                                }
+                            ]
+                        },
+                        {
+                            "label": "Speak to the figure",
+                            "actions": [
+                                {
+                                    "type": "narrate",
+                                    "kind": "dialog",
+                                    "speaker": "The Figure",
+                                    "text": "You found the key, then. Good. There's much to discuss."
+                                },
+                                {
+                                    "type": "narrate",
+                                    "kind": "system",
+                                    "text": "(End of demo.)"
+                                }
+                            ]
+                        }
+                    ]
+                }
             ]
-          }
-        },
-        {
-          "id": "window",
-          "name": "Cabin Window",
-          "rect": { "x": 64, "y": 30, "w": 10, "h": 14 },
-          "color": "rgba(220, 220, 120, 0.18)",
-          "triggers": {
-            "onHover": [
-              { "type": "narrate", "text": "A window, fogged from the inside. Something flickers within — a candle?" }
-            ],
-            "onClick": [
-              { "type": "narrate", "text": "You press your face to the glass. A single candle burns on a table you cannot quite see." }
-            ]
-          }
         }
-      ]
-    },
-    "interior": {
-      "name": "Inside the Cabin",
-      "background": "#1a1018",
-      "description": "Inside, the air is dry and smells of old paper. A single candle gutters on a writing desk. A lantern hangs from a hook by the door.",
-      "onEnter": [
-        {
-          "type": "if",
-          "condition": { "type": "not", "condition": { "type": "flag", "flag": "visitedInterior" } },
-          "then": [
-            { "type": "narrate", "speaker": "A voice", "kind": "dialog", "text": "You came. I was beginning to wonder." },
-            { "type": "setFlag", "flag": "visitedInterior", "value": true }
-          ]
-        }
-      ],
-      "objects": [
-        {
-          "id": "lantern-hook",
-          "name": "Lantern",
-          "rect": { "x": 8, "y": 30, "w": 9, "h": 22 },
-          "color": "rgba(240, 200, 80, 0.3)",
-          "visibleIf": { "type": "not", "condition": { "type": "hasItem", "item": "lantern" } },
-          "triggers": {
-            "onHover": [
-              { "type": "narrate", "text": "An oil lantern on a hook. It looks heavy with fuel." }
-            ],
-            "onClick": [
-              { "type": "narrate", "text": "You lift the lantern from its hook." },
-              { "type": "addItem", "item": "lantern" }
-            ]
-          }
-        },
-        {
-          "id": "desk",
-          "name": "Writing Desk",
-          "rect": { "x": 35, "y": 50, "w": 30, "h": 30 },
-          "color": "rgba(120, 80, 40, 0.45)",
-          "triggers": {
-            "onHover": [
-              { "type": "narrate", "text": "An old writing desk. A single sheet of paper rests on it, face down." }
-            ],
-            "onClick": [
-              {
-                "type": "if",
-                "condition": { "type": "flag", "flag": "readNote" },
-                "then": [
-                  { "type": "narrate", "text": "The note still reads: \"Bring the lantern to the cellar.\"" }
-                ],
-                "else": [
-                  { "type": "narrate", "text": "You turn the page over. The handwriting is hurried." },
-                  { "type": "narrate", "kind": "dialog", "speaker": "The Note", "text": "Bring the lantern to the cellar." },
-                  { "type": "setFlag", "flag": "readNote", "value": true }
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "id": "exit",
-          "name": "Door (out)",
-          "rect": { "x": 80, "y": 25, "w": 14, "h": 60 },
-          "color": "rgba(140, 90, 50, 0.35)",
-          "triggers": {
-            "onClick": [
-              { "type": "narrate", "text": "You step back out into the cool night." },
-              { "type": "goto", "scene": "clearing" }
-            ]
-          }
-        },
-        {
-          "id": "trapdoor",
-          "name": "Trapdoor",
-          "rect": { "x": 40, "y": 82, "w": 18, "h": 12 },
-          "color": "rgba(60, 40, 20, 0.6)",
-          "visibleIf": { "type": "flag", "flag": "readNote" },
-          "triggers": {
-            "onHover": [
-              { "type": "narrate", "text": "A trapdoor set into the floor. You hadn't noticed it before." }
-            ],
-            "onClick": [
-              {
-                "type": "if",
-                "condition": { "type": "hasItem", "item": "lantern" },
-                "then": [
-                  { "type": "narrate", "text": "You light the lantern and descend." },
-                  { "type": "goto", "scene": "cellar" }
-                ],
-                "else": [
-                  { "type": "narrate", "text": "Stairs disappear into pitch black. You'll need a light." }
-                ]
-              }
-            ]
-          }
-        }
-      ]
-    },
-    "cellar": {
-      "name": "The Cellar",
-      "background": "#0c0810",
-      "description": "Lantern-light spills across earthen walls. At the far end of the cellar, someone is waiting — but that, perhaps, is a story for another scene.",
-      "objects": [
-        {
-          "id": "stairs-up",
-          "name": "Stairs Up",
-          "rect": { "x": 78, "y": 20, "w": 18, "h": 70 },
-          "color": "rgba(80, 60, 40, 0.4)",
-          "triggers": {
-            "onClick": [
-              { "type": "narrate", "text": "You climb back up to the cabin." },
-              { "type": "goto", "scene": "interior" }
-            ]
-          }
-        },
-        {
-          "id": "figure",
-          "name": "Waiting Figure",
-          "rect": { "x": 20, "y": 35, "w": 18, "h": 50 },
-          "color": "rgba(180, 180, 220, 0.15)",
-          "triggers": {
-            "onHover": [
-              { "type": "narrate", "text": "The figure does not move. The lantern-light slides off them like water." }
-            ],
-            "onClick": [
-              { "type": "narrate", "kind": "dialog", "speaker": "The Figure", "text": "You found the key, then. Good. There's much to discuss." },
-              { "type": "narrate", "kind": "system", "text": "(End of demo.)" }
-            ]
-          }
-        }
-      ]
     }
-  }
 }

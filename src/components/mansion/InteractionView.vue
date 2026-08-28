@@ -13,7 +13,11 @@ const interaction = computed(() => props.engine.activeInteraction.value);
 const site = computed(() => props.engine.currentSite.value);
 
 const backgroundStyle = computed(() => {
-  const bg = interaction.value?.background ?? site.value?.background;
+  // Runtime override (set via setInteractionVisuals) takes precedence over the
+  // interaction's authored background. Falls through to site background if neither
+  // is set, then to the default dark fill.
+  const override = props.engine.state.interactionBackgroundOverride;
+  const bg = override ?? interaction.value?.background ?? site.value?.background;
   if (!bg) return { background: '#1a1722' };
   if (!isUrlLike(bg)) return { background: bg };
   return {
@@ -24,9 +28,47 @@ const backgroundStyle = computed(() => {
 });
 
 const animationClasses = computed(() => {
-  const list = interaction.value?.animations ?? [];
+  const override = props.engine.state.interactionAnimationsOverride;
+  const list = override ?? interaction.value?.animations ?? [];
   return list.map((name) => `anim-${name}`);
 });
+
+const overlays = computed(() => {
+  const override = props.engine.state.interactionOverlaysOverride;
+  const list = override ?? interaction.value?.overlays ?? [];
+  // Sort by z ascending (lower behind, higher in front). Stable: equal-z
+  // overlays keep their list order so `addOverlay` lands above same-z
+  // siblings added earlier — matches the intuition that adding paints on top.
+  // We attach the original index to each item before sorting so `Array.sort`
+  // doesn't reorder equal-z entries on engines that aren't stable by spec.
+  return list
+    .map((o, i) => ({ o, i }))
+    .sort((a, b) => (a.o.z ?? 0) - (b.o.z ?? 0) || a.i - b.i)
+    .map((entry) => entry.o);
+});
+
+function overlayStyle(o: {
+  rect?: { x: number; y: number; w: number; h: number };
+  place?: { top: number; left: number; scale?: number };
+}): Record<string, string> {
+  if (o.place) {
+    const scale = o.place.scale ?? 100;
+    const style: Record<string, string> = {
+      top: `${o.place.top}%`,
+      left: `${o.place.left}%`,
+      transformOrigin: 'top left',
+    };
+    if (scale !== 100) style.transform = `scale(${scale / 100})`;
+    return style;
+  }
+  const r = o.rect ?? { x: 0, y: 0, w: 100, h: 100 };
+  return {
+    left: `${r.x}%`,
+    top: `${r.y}%`,
+    width: `${r.w}%`,
+    height: `${r.h}%`,
+  };
+}
 
 const locationLabel = computed(() => {
   const it = interaction.value;
@@ -34,6 +76,50 @@ const locationLabel = computed(() => {
   const loc = site.value?.locations?.[it.location];
   return loc?.name ?? it.location;
 });
+
+// ─── Rain drops ────────────────────────────────────────────────────────────
+//
+// Port of the Arickle XKjMZY pen (CodePen) — front row + back row of drops
+// with stem and splat. The original generated HTML strings via jQuery; here
+// we build two arrays of style descriptors and Vue v-fors them. Drops are
+// generated once per component mount (component remounts on each interaction
+// transition, so the random seed naturally varies between encounters).
+
+interface RainDrop {
+  idx: number;
+  style: Record<string, string>;
+  innerStyle: Record<string, string>;
+}
+
+function makeRain(): { front: RainDrop[]; back: RainDrop[] } {
+  const front: RainDrop[] = [];
+  const back: RainDrop[] = [];
+  let position = 0;
+  let idx = 0;
+  while (position < 100) {
+    const randHundo = Math.floor(Math.random() * 98) + 1; // 1..98
+    const randFiver = Math.floor(Math.random() * 4) + 2; // 2..5
+    position += randFiver;
+    const bottom = `${randFiver * 2 - 1 + 100}%`;
+    const animationDelay = `0.${randHundo}s`;
+    const animationDuration = `0.5${randHundo}s`;
+    const innerStyle = { animationDelay, animationDuration };
+    front.push({
+      idx,
+      style: { left: `${position}%`, bottom, animationDelay, animationDuration },
+      innerStyle,
+    });
+    back.push({
+      idx,
+      style: { right: `${position}%`, bottom, animationDelay, animationDuration },
+      innerStyle,
+    });
+    idx++;
+  }
+  return { front, back };
+}
+
+const { front: frontDrops, back: backDrops } = makeRain();
 </script>
 
 <template>
@@ -46,8 +132,47 @@ const locationLabel = computed(() => {
       <div class="ambient" aria-hidden="true">
         <div class="layer glow" />
         <div class="layer vignette" />
-        <div class="layer rain" />
         <div class="layer lamp" />
+      </div>
+      <TransitionGroup
+        name="overlay-fade"
+        tag="div"
+        class="overlays"
+        aria-hidden="true"
+      >
+        <img
+          v-for="o in overlays"
+          :key="o.id"
+          class="overlay"
+          :class="{ 'overlay-rect': !o.place, 'overlay-place': !!o.place }"
+          :src="resolveAssetUrl(o.image)"
+          :style="overlayStyle(o)"
+          alt=""
+        />
+      </TransitionGroup>
+      <div class="rain-container" aria-hidden="true">
+        <div class="rain front-row">
+          <div
+            v-for="d in frontDrops"
+            :key="`f${d.idx}`"
+            class="drop"
+            :style="d.style"
+          >
+            <div class="stem" :style="d.innerStyle" />
+            <div class="splat" :style="d.innerStyle" />
+          </div>
+        </div>
+        <div class="rain back-row">
+          <div
+            v-for="d in backDrops"
+            :key="`b${d.idx}`"
+            class="drop"
+            :style="d.style"
+          >
+            <div class="stem" :style="d.innerStyle" />
+            <div class="splat" :style="d.innerStyle" />
+          </div>
+        </div>
       </div>
       <div class="room-label">{{ locationLabel }}</div>
     </div>
@@ -100,13 +225,139 @@ const locationLabel = computed(() => {
   mix-blend-mode: screen;
 }
 
-.layer.rain {
-  background-image: repeating-linear-gradient(
-    105deg,
-    rgba(180, 200, 220, 0.18) 0 1px,
-    transparent 1px 5px
-  );
-  mix-blend-mode: screen;
+/* Image overlays layered between the ambient effects and the rain. Each
+ * overlay covers the interaction image (cover-sized, centred). Enter/leave
+ * via the `overlay-fade` Vue transition. */
+.overlays {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.overlay {
+  position: absolute;
+  pointer-events: none;
+  /* No max-width/height: place-mode overlays render at the image's natural
+   * pixel dimensions (then `transform: scale(N)` adjusts). */
+}
+.overlay-rect {
+  /* width/height set inline from the rect — contain preserves aspect inside it. */
+  object-fit: contain;
+  object-position: center;
+}
+.overlay-place {
+  /* Natural pixel dimensions; transform-origin set inline to top-left so
+   * `transform: scale(N)` grows/shrinks from the placed anchor point. */
+}
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 500ms ease;
+}
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
+}
+
+/* Rain — port of Arickle's "XKjMZY" CodePen, sized for the 540px interaction
+ * canvas (the original was viewport-sized via `90vh`). Two rows of drops,
+ * each drop = stem (falling streak) + splat (ripple). Activated by the
+ * `anim-rain` class on the parent `.image`. */
+.rain-container {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms;
+}
+.image.anim-rain .rain-container {
+  opacity: 1;
+}
+
+.rain {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+.rain.back-row {
+  z-index: 1;
+  bottom: 30px;
+  opacity: 0.5;
+}
+
+.drop {
+  position: absolute;
+  bottom: 100%;
+  width: 15px;
+  height: 80px;
+  pointer-events: none;
+  animation: rain-drop 0.5s linear infinite;
+}
+
+@keyframes rain-drop {
+  0% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(500px);
+  }
+  100% {
+    transform: translateY(500px);
+  }
+}
+
+.stem {
+  width: 1px;
+  height: 60%;
+  margin-left: 7px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.25));
+  animation: rain-stem 0.5s linear infinite;
+}
+
+@keyframes rain-stem {
+  0% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.splat {
+  width: 15px;
+  height: 8px;
+  border-top: 2px dotted rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  opacity: 1;
+  transform: scale(0);
+  animation: rain-splat 0.5s linear infinite;
+}
+
+@keyframes rain-splat {
+  0% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  90% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
 }
 
 .image.anim-glow-pulse .layer.glow {
@@ -123,10 +374,6 @@ const locationLabel = computed(() => {
 .image.anim-lamp-flicker .layer.lamp {
   opacity: 0.85;
   animation: lamp-flicker 4.5s ease-in-out infinite;
-}
-.image.anim-rain .layer.rain {
-  opacity: 0.45;
-  animation: rain-fall 1.2s linear infinite;
 }
 
 @keyframes glow-pulse {
@@ -170,14 +417,6 @@ const locationLabel = computed(() => {
     opacity: 0.78;
   }
 }
-@keyframes rain-fall {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: -40px 80px;
-  }
-}
 
 .room-label {
   position: absolute;
@@ -193,6 +432,6 @@ const locationLabel = computed(() => {
 }
 
 .interaction > :deep(.narration) {
-  height: 280px;
+  height: 260px;
 }
 </style>
